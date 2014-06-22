@@ -1,5 +1,6 @@
 #include <Magick++.h>
 #include <Magick++/STL.h>
+#include <sstream>
 #include "common.h"
 
 using Magick::InitializeMagick;
@@ -8,6 +9,7 @@ using Magick::Image;
 using Magick::writeImages;
 using Magick::DrawableCircle;
 using Magick::DrawableText;
+using std::ostringstream;
 
 int N;
 double A, rmin, rmax;
@@ -156,21 +158,45 @@ Shreds moveParticles(const Shreds& particles, double dt)
         ret[i].v = particles[i].v + (k[0][i].a + k[1][i].a*2 + k[2][i].a*2 + k[3][i].a)*(dt/6);
         ret[i].a = {0., 0.};
     }
-    /*    for (auto p = particles.begin(); p != particles.end(); p++, i++)
-    {
-        k[i] = *p;
-        for (int j = 0; j < N; ++j)
-            if (j != i)
-                k[i].a += computeForce(ret[i], ret[j]);
-    }
-
-    for (auto p = particles.begin(); p != particles.end(); p++)
-    {
-        Particle pa = *p;
-        pa.r = pa.r + pa.v*dt;
-        ret.push_back(pa);
-        }*/
     return ret;
+}
+
+string point2string(Point p)
+{
+    ostringstream oss;
+    oss <<std::setprecision(3) <<"(" <<p.x <<", " <<p.y <<")";
+    return oss.str();
+}
+
+string double2string(double val)
+{
+    ostringstream oss;
+    oss <<std::setprecision(3) <<val;
+    return oss.str();
+}
+
+void drawInfo(Image* img, const Box& box, double scale, double t, double deviation,
+              const Geometry& size)
+{
+    img->fillColor("black");
+    img->strokeColor("black");
+    img->strokeWidth(0);
+
+
+    img->draw(DrawableText(size.width() - 80, size.height() - 20,
+                           point2string(box.rightdown)));
+    img->draw(DrawableText(10, 20, point2string(box.leftup)));
+    img->draw(DrawableText(10, size.height() - 20,
+                           point2string({box.leftup.x, box.rightdown.y})));
+
+    img->draw(DrawableText(10, size.height()/2,
+                           double2string((box.leftup.y + box.rightdown.y)/2)));
+    img->draw(DrawableText(size.width()/2, size.height() - 20,
+                           double2string((box.leftup.x + box.rightdown.x)/2)));
+
+    img->draw(DrawableText(size.width() - 80, 20,
+                           "t:   " + double2string(t) + "\n"
+                           "err: " + double2string(deviation)));
 }
 
 void makeMovie(const vector<Shreds>& sequence, string fname)
@@ -186,6 +212,7 @@ void makeMovie(const vector<Shreds>& sequence, string fname)
     {
         v.push_back(Image(size, "white"));
         drawFrame(&v[i], sequence[i], box, scale);
+        drawInfo(&v[i], box, scale, 0, 0, size);
     }
 
     writeImages(v.begin(), v.end(), fname);
@@ -204,7 +231,7 @@ int main(int argc,char **argv)
     vector<Shreds> sequence;
     sequence.push_back(initShreds(cfg));
 
-    for (int i = 1; i < 100; ++i)
+    for (int i = 1; i < 1; ++i)
     {
         sequence.push_back(moveParticles(sequence[i-1], 1.0));
     }
