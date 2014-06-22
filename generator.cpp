@@ -233,7 +233,6 @@ int main(int argc, char** argv)
     double vDisp = getProperty<double>("vDisp", cfg, 10.);
     string outputFname = getProperty<string>("output", cfg, "start.cfg");
     int nHistogramm = getProperty<int>("hist", cfg, 0);
-
     
     srand(time(NULL));
 
@@ -245,6 +244,10 @@ int main(int argc, char** argv)
    
     vector<Particle> dots = generate(N, box, vDisp);
     drawHistogramm(dots, nHistogramm);
+    root.add("rmin", Setting::TypeFloat) = getProperty<double>("rmin", cfg, 1.);
+    root.add("rmax", Setting::TypeFloat) = getProperty<double>("rmax", cfg, 10.);
+    root.add("A", Setting::TypeFloat) = getProperty<double>("A", cfg, 1.);
+    root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
     store(dots, &coords);
     writeFile(out, outputFname);
 
