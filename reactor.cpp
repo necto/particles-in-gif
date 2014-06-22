@@ -1,10 +1,13 @@
 #include <Magick++.h>
 #include <Magick++/STL.h>
-#include <iostream> 
-#include <vector>
-#include <string>
-using namespace std; 
-using namespace Magick; 
+#include "common.h"
+
+using Magick::InitializeMagick;
+using Magick::Image;
+using Magick::writeImages;
+using Magick::DrawableCircle;
+using Magick::DrawableText;
+
 int main(int argc,char **argv) 
 { 
   InitializeMagick(*argv);

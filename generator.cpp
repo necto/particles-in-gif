@@ -1,38 +1,5 @@
 
-#include <stdlib.h>
-#include <cstring>
-#include <csignal>
-#include <cmath>
-#include <iostream>
-#include <iomanip>
-#include <string>
-#include <vector>
-#include <libconfig.h++>
-
-using libconfig::Config;
-using libconfig::Setting;
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::vector;
-using std::string;
-using libconfig::FileIOException;
-using libconfig::ParseException;
-using libconfig::SettingNotFoundException;
-using libconfig::SettingException;
-
-double PI = 3.1415926;
-
-struct Point
-{
-    double x, y;
-    double len() const { return sqrt(x*x + y*y);}
-};
-
-struct Particle
-{
-    Point r, v;
-};
+#include "common.h"
 
 double random(double max)
 {
@@ -62,66 +29,6 @@ Particle makeRandom(Point limit, double vdisp)
 {
     return {makeRandom(limit), makeNormalRandomP(vdisp)};
 }
-
-template<typename T>
-T getProperty(const char* name, const Config& cfg)
-{
-    T ret;
-    try
-    {
-        ret = cfg.lookup(name);
-    }
-    catch(const SettingNotFoundException &nfex)
-    {
-        cerr << "No '" <<name <<"' setting in configuration file." << endl;
-        std::raise(SIGTERM);
-    }
-    catch(const SettingException &tex)
-    {
-        cerr << "Error on parameter " <<name <<":" <<tex.what() <<endl;
-        std::raise(SIGTERM);
-    }
-    return ret;
-}
-
-template<>
-string getProperty<string>(const char* name, const Config& cfg)
-{
-    return getProperty<const char*>(name, cfg);
-}
-
-template<>
-Point getProperty<Point>(const char* name, const Config& cfg)
-{
-    Point ret;
-    try
-    {
-        Setting& p = cfg.lookup(name);
-        ret.x = p["x"];
-        ret.y = p["y"];
-    }
-    catch(const SettingNotFoundException &nfex)
-    {
-        cerr << "No '" <<name <<"' setting in configuration file." << endl;
-        std::raise(SIGTERM);
-    }
-    catch(const SettingException &tex)
-    {
-        cerr << "Error on parameter " <<name <<":" <<tex.what() <<endl;
-        std::raise(SIGTERM);
-    }
-    return ret;
-}
-
-template<typename T>
-T getProperty(const char* name, const Config& cfg, T def)
-{
-    if (cfg.exists(name))
-        return getProperty<T>(name, cfg);
-    return def;
-}
-
-typedef vector<Particle> Shreds;
 
 Shreds generate(int N, Point box, double vdisp)
 {
@@ -214,7 +121,6 @@ void writeFile(Config& rezult, string fname)
         cerr << "I/O error while writing output file" <<endl;
         std::raise(SIGTERM);
     }
-
 }
 
 int main(int argc, char** argv)
