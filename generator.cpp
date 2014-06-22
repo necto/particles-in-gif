@@ -1,5 +1,6 @@
 
 #include <stdlib.h>
+#include <cstring>
 #include <csignal>
 #include <cmath>
 #include <iostream>
@@ -84,6 +85,12 @@ T getProperty(const char* name, const Config& cfg)
 }
 
 template<>
+string getProperty<string>(const char* name, const Config& cfg)
+{
+    return getProperty<const char*>(name, cfg);
+}
+
+template<>
 Point getProperty<Point>(const char* name, const Config& cfg)
 {
     Point ret;
@@ -143,6 +150,10 @@ void store(const Shreds& dots, Setting* arr)
 double computeDistribution(const Shreds& dots, int* arr, int len)
 {
     double vmax = 0;
+    for (int i = 0; i < len; ++i)
+    {
+        arr[i] = 0;
+    }
     for (int i = 0; i < dots.size(); ++i)
     {
         double v = dots[i].v.len();
@@ -156,30 +167,72 @@ double computeDistribution(const Shreds& dots, int* arr, int len)
     return vmax;
 }
 
-int main(int argc, char** argv)
+void drawHistogramm(const Shreds& dots, int nCells)
 {
-    Config cfg;
-    const char* fname = "example.cfg";
-    if (argc>1) fname = argv[1];
+    if (nCells <= 0) return;
+    int* dist = new int[nCells];
+    double maxV = computeDistribution(dots, dist, nCells);
+    cout <<endl;
+    cout <<"Generated velocity distribution:" <<endl;
+    for (int i = 0; i < nCells; ++i)
+    {
+        int len = dist[i];
+        cout <<std::setprecision(3) <<std::fixed <<std::setw(8) <<i*maxV/nCells <<" ";
+        while (len--) cout <<"#";
+        cout <<endl;
+    }
+}
+
+void readConfig(Config* cfg, const char* fname)
+{
     try
     {
-        cfg.readFile("example.cfg");
+        cfg->readFile(fname);
     }
     catch(FileIOException &fioex)
     {
-        std::cerr << "I/O error while reading file." << std::endl;
-        return 1;
+        std::cerr << "I/O error while reading file" <<fname <<"." << std::endl;
+        std::raise(SIGTERM);
     }
     catch(ParseException &pex)
     {
         std::cerr << "Parse error at " << pex.getLine()
                   << " - " << pex.getError() << std::endl;
-        return 1;
+        std::raise(SIGTERM);
+    }
+}
+
+void writeFile(Config& rezult, string fname)
+{
+    try
+    {
+        rezult.writeFile(fname.c_str());
+        cout <<"The generated configuration is wirtten to "<<fname <<endl;
+    }
+    catch(const FileIOException &fioex)
+    {
+        cerr << "I/O error while writing output file" <<endl;
+        std::raise(SIGTERM);
     }
 
+}
+
+int main(int argc, char** argv)
+{
+    Config cfg;
+    const char* fname = "example.cfg";
+    if (argc>1) fname = argv[1];
+    else
+    {
+        cout <<"No options supplied. Using default configuration file: " <<fname <<endl;
+    }
+
+    readConfig(&cfg, fname);
     int N = getProperty<int>("N", cfg);
     Point box = getProperty<Point>("box", cfg, {100., 100.});
     double vDisp = getProperty<double>("vDisp", cfg, 10.);
+    string outputFname = getProperty<string>("output", cfg, "start.cfg");
+    int nHistogramm = getProperty<int>("hist", cfg, 0);
 
     
     srand(time(NULL));
@@ -191,29 +244,9 @@ int main(int argc, char** argv)
     Setting &coords = root.add("particles", Setting::TypeList);
    
     vector<Particle> dots = generate(N, box, vDisp);
-    const int nCells = 10;
-    int dist[nCells] = {0};
-    double maxV = computeDistribution(dots, dist, nCells);
-    cout <<endl;
-    cout <<"Generated velocity distribution:" <<endl;
-    for (int i = 0; i < nCells; ++i)
-    {
-        int len = dist[i];
-        cout <<std::setprecision(3) <<std::fixed <<std::setw(8) <<i*maxV/nCells <<" ";
-        while (len--) cout <<"#";
-        cout <<endl;
-    }
+    drawHistogramm(dots, nHistogramm);
     store(dots, &coords);
-
-    try
-    {
-        out.writeFile("start.cfg");
-    }
-    catch(const FileIOException &fioex)
-    {
-        cerr << "I/O error while writing output file" <<endl;
-        return 1;
-    }
+    writeFile(out, outputFname);
 
     return 0;
 }
