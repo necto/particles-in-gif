@@ -83,6 +83,37 @@ T getProperty(const char* name, const Config& cfg)
     return ret;
 }
 
+template<>
+Point getProperty<Point>(const char* name, const Config& cfg)
+{
+    Point ret;
+    try
+    {
+        Setting& p = cfg.lookup(name);
+        ret.x = p["x"];
+        ret.y = p["y"];
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+        cerr << "No '" <<name <<"' setting in configuration file." << endl;
+        std::raise(SIGTERM);
+    }
+    catch(const SettingException &tex)
+    {
+        cerr << "Error on parameter " <<name <<":" <<tex.what() <<endl;
+        std::raise(SIGTERM);
+    }
+    return ret;
+}
+
+template<typename T>
+T getProperty(const char* name, const Config& cfg, T def)
+{
+    if (cfg.exists(name))
+        return getProperty<T>(name, cfg);
+    return def;
+}
+
 typedef vector<Particle> Shreds;
 
 Shreds generate(int N, Point box, double vdisp)
@@ -147,6 +178,9 @@ int main(int argc, char** argv)
     }
 
     int N = getProperty<int>("N", cfg);
+    Point box = getProperty<Point>("box", cfg, {100., 100.});
+    double vDisp = getProperty<double>("vDisp", cfg, 10.);
+
     
     srand(time(NULL));
 
@@ -156,7 +190,7 @@ int main(int argc, char** argv)
 
     Setting &coords = root.add("particles", Setting::TypeList);
    
-    vector<Particle> dots = generate(N, {100., 100.}, 10.);
+    vector<Particle> dots = generate(N, box, vDisp);
     const int nCells = 10;
     int dist[nCells] = {0};
     double maxV = computeDistribution(dots, dist, nCells);
