@@ -262,6 +262,7 @@ void makeMovie(const vector<Scene>& sequence, string fname)
     Geometry size(width, box.aspectRatio()*width);
     double scale = width / box.width();
 
+    cout <<"Rendering frames..." <<endl;
     vector<Image> v;
     for (int i = 0; i < sequence.size(); ++i)
     {
@@ -270,7 +271,7 @@ void makeMovie(const vector<Scene>& sequence, string fname)
         drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
                  sequence[i].deviation, size);
     }
-
+    cout <<"Storing fremes to file "<<fname<<endl;
     writeImages(v.begin(), v.end(), fname);
 }
 

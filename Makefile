@@ -1,3 +1,12 @@
+
+all : generator reactor
+
+simulation.gif: start.cfg reactor
+	./reactor start.cfg
+
+start.cfg : generator example.cfg
+	./generator example.cfg
+
 generator : generator.cpp common.h
 	g++ generator.cpp -lconfig++ -g -std=c++0x -o generator
 
