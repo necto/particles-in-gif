@@ -12,9 +12,18 @@ using Magick::DrawableText;
 using std::ostringstream;
 
 int N;
-double A, rmin, rmax;
+double A, rmin, rmax, T;
+double maxDev;
 
 const double epsilon = 1e-10;
+
+struct Scene
+{
+    Shreds particles;
+    double time;
+    double h;
+    double deviation;
+};
 
 void readConfig(Config* cfg, const char* fname)
 {
@@ -69,11 +78,12 @@ struct Box
     }
 };
 
-Box getBox(const vector<Shreds>& seq)
+Box getBox(const vector<Scene>& seq)
 {
-    Box ret = {{seq[0][0].r.x, seq[0][0].r.y},{seq[0][0].r.x,seq[0][0].r.y}};
+    Box ret = {{seq[0].particles[0].r.x, seq[0].particles[0].r.y},
+               {seq[0].particles[0].r.x,seq[0].particles[0].r.y}};
     for (auto ps = seq.begin(); ps != seq.end(); ps++)
-        for (auto i = ps->begin(); i != ps->end(); i++)
+        for (auto i = ps->particles.begin(); i != ps->particles.end(); i++)
         {
             if (i->r.x < ret.leftup.x) ret.leftup.x = i->r.x;
             if (i->r.y < ret.leftup.y) ret.leftup.y = i->r.y;
@@ -107,7 +117,17 @@ Point computeForce(Point i, Point j)
         delta*(-std::exp(-(distance - rmin)/(rmax-rmin))/distance/(rmax-rmin));
 }
 
-Shreds moveParticles(const Shreds& particles, double dt)
+double computeDeviation(const Shreds& p1, const Shreds& p2)
+{
+    double dev = 0;
+    for (int i = 0; i < N; ++i)
+    {
+        dev += (p1[i].r - p2[i].r).len();
+    }
+    return dev/15;
+}
+
+Shreds tryMove(const Shreds& particles, double dt)
 {
     Shreds k[4];
     for (int i = 0; i < 4; ++i)
@@ -154,11 +174,44 @@ Shreds moveParticles(const Shreds& particles, double dt)
             if (j != i)
                 k[3][i].a += computeForce(ret[i].r, ret[j].r);
 
-        ret[i].r = particles[i].r + (k[0][i].v + k[1][i].v*2 + k[2][i].v*2 + k[3][i].v)*(dt/6);
-        ret[i].v = particles[i].v + (k[0][i].a + k[1][i].a*2 + k[2][i].a*2 + k[3][i].a)*(dt/6);
+        ret[i].r = particles[i].r + (k[0][i].v + k[1][i].v*2 +
+                                     k[2][i].v*2 + k[3][i].v)*(dt/6);
+        ret[i].v = particles[i].v + (k[0][i].a + k[1][i].a*2 +
+                                     k[2][i].a*2 + k[3][i].a)*(dt/6);
         ret[i].a = {0., 0.};
     }
     return ret;
+}
+
+Scene moveParticles(const Scene& scene, double step, double* h)
+{
+    Shreds p1 = tryMove(tryMove(scene.particles, *h), *h);
+    Shreds p2 = tryMove(scene.particles, *h*2);
+    double dev = computeDeviation(p1, p2);
+    if (dev < maxDev)
+    {
+        *h = *h*2;
+        return Scene({p2, scene.time + step, *h, dev});
+    }
+    while (dev > maxDev)
+    {
+        *h = *h/2;
+        p2 = p1;
+        p1 = tryMove(scene.particles, *h);
+        double dt = *h;
+        while (dt < step)
+        {
+            p1 = tryMove(p1, *h);
+            dt += *h;
+        }
+        dev = computeDeviation(p1, p2);
+        if (*h < epsilon)
+        {
+            cerr <<"Insuperable diversion" <<endl;
+            std::raise(SIGTERM);
+        }
+    }
+    return Scene({p1, scene.time + step, *h, dev});
 }
 
 string point2string(Point p)
@@ -175,8 +228,8 @@ string double2string(double val)
     return oss.str();
 }
 
-void drawInfo(Image* img, const Box& box, double scale, double t, double deviation,
-              const Geometry& size)
+void drawInfo(Image* img, const Box& box, double scale, double t,
+              double h, double deviation, const Geometry& size)
 {
     img->fillColor("black");
     img->strokeColor("black");
@@ -196,10 +249,11 @@ void drawInfo(Image* img, const Box& box, double scale, double t, double deviati
 
     img->draw(DrawableText(size.width() - 80, 20,
                            "t:   " + double2string(t) + "\n"
+                           "h:   " + double2string(h) + "\n"
                            "err: " + double2string(deviation)));
 }
 
-void makeMovie(const vector<Shreds>& sequence, string fname)
+void makeMovie(const vector<Scene>& sequence, string fname)
 {
     Box box = getBox(sequence);
     box.enlarge(0.1);
@@ -211,32 +265,37 @@ void makeMovie(const vector<Shreds>& sequence, string fname)
     for (int i = 0; i < sequence.size(); ++i)
     {
         v.push_back(Image(size, "white"));
-        drawFrame(&v[i], sequence[i], box, scale);
-        drawInfo(&v[i], box, scale, 0, 0, size);
+        drawFrame(&v[i], sequence[i].particles, box, scale);
+        drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
+                 sequence[i].deviation, size);
     }
 
     writeImages(v.begin(), v.end(), fname);
 }
 
-int main(int argc,char **argv) 
+int main(int argc,char **argv)
 {
     InitializeMagick(*argv);
     Config cfg;
     readConfig(&cfg, "start.cfg");
     N = getProperty<int>("N", cfg);
     A = getProperty<double>("A", cfg);
+    T = getProperty<double>("T", cfg);
     rmin = getProperty<double>("rmin", cfg);
     rmax = getProperty<double>("rmax", cfg);
+    maxDev = getProperty<double>("deviation", cfg);
     
-    vector<Shreds> sequence;
-    sequence.push_back(initShreds(cfg));
+    vector<Scene> sequence;
+    sequence.push_back({initShreds(cfg), 0., 0., 0.});
+    double step = getProperty<double>("step", cfg);;
+    double h = 0.1;
 
-    for (int i = 1; i < 1; ++i)
+    for (int i = 1; ; ++i)
     {
-        sequence.push_back(moveParticles(sequence[i-1], 1.0));
+        sequence.push_back(moveParticles(sequence[i-1], step, &h));
+        cout <<"computed state # " <<i <<" time: " <<sequence[i].time <<endl;
+        if (sequence[i].time > T) break;
     }
-
-    //v[i].draw( DrawableText(300, 300, "I love Russ пупкин"));
 
     makeMovie(sequence, "ttt.gif");
 

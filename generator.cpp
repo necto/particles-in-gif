@@ -151,11 +151,14 @@ int main(int argc, char** argv)
     drawHistogramm(dots, nHistogramm);
     root.add("rmin", Setting::TypeFloat) = getProperty<double>("rmin", cfg, 1.);
     root.add("rmax", Setting::TypeFloat) = getProperty<double>("rmax", cfg, 10.);
+    root.add("deviation", Setting::TypeFloat) = getProperty<double>("deviation", cfg, 10.);
     root.add("A", Setting::TypeFloat) = getProperty<double>("A", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
+    root.add("step", Setting::TypeFloat) = getProperty<double>("step", cfg, 15.);
     Setting &coords = root.add("particles", Setting::TypeList);
     store(dots, &coords);
     writeFile(out, outputFname);
 
     return 0;
 }
+
