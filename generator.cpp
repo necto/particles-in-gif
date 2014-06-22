@@ -155,6 +155,8 @@ int main(int argc, char** argv)
     root.add("A", Setting::TypeFloat) = getProperty<double>("A", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
     root.add("step", Setting::TypeFloat) = getProperty<double>("step", cfg, 15.);
+    root.add("width", Setting::TypeInt) = getProperty<int>("width", cfg, 1000);
+    root.add("rezultFile", Setting::TypeString) = getProperty<string>("rezultFile", cfg, "sim.gif");
     Setting &coords = root.add("particles", Setting::TypeList);
     store(dots, &coords);
     writeFile(out, outputFname);

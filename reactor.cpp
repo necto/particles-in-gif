@@ -14,6 +14,7 @@ using std::ostringstream;
 int N;
 double A, rmin, rmax, T;
 double maxDev;
+int screenWidth;
 
 const double epsilon = 1e-10;
 
@@ -257,7 +258,7 @@ void makeMovie(const vector<Scene>& sequence, string fname)
 {
     Box box = getBox(sequence);
     box.enlarge(0.1);
-    double width = 1000;
+    double width = screenWidth;
     Geometry size(width, box.aspectRatio()*width);
     double scale = width / box.width();
 
@@ -277,17 +278,26 @@ int main(int argc,char **argv)
 {
     InitializeMagick(*argv);
     Config cfg;
-    readConfig(&cfg, "start.cfg");
+    
+    const char* fname = "start.cfg";
+    if (argc>1) fname = argv[1];
+    else
+    {
+        cout <<"No options supplied. Using default configuration file: " <<fname <<endl;
+    }
+    readConfig(&cfg, fname);
     N = getProperty<int>("N", cfg);
     A = getProperty<double>("A", cfg);
     T = getProperty<double>("T", cfg);
     rmin = getProperty<double>("rmin", cfg);
     rmax = getProperty<double>("rmax", cfg);
     maxDev = getProperty<double>("deviation", cfg);
+    screenWidth = getProperty<int>("width", cfg);
+    string outFname = getProperty<string>("rezultFile", cfg);
     
     vector<Scene> sequence;
     sequence.push_back({initShreds(cfg), 0., 0., 0.});
-    double step = getProperty<double>("step", cfg);;
+    double step = getProperty<double>("step", cfg);
     double h = 0.1;
 
     for (int i = 1; ; ++i)
@@ -297,7 +307,7 @@ int main(int argc,char **argv)
         if (sequence[i].time > T) break;
     }
 
-    makeMovie(sequence, "ttt.gif");
+    makeMovie(sequence, outFname);
 
     return 0; 
 }
