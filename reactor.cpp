@@ -9,6 +9,10 @@ using Magick::writeImages;
 using Magick::DrawableCircle;
 using Magick::DrawableText;
 
+int N;
+double A, rmin, rmax;
+
+const double epsilon = 1e-10;
 
 void readConfig(Config* cfg, const char* fname)
 {
@@ -92,15 +96,80 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
     
 }
 
+Point computeForce(Point i, Point j)
+{
+    Point delta = j - i;
+    double distance = delta.len();
+    if (distance < epsilon) return {0.,0.};
+    return delta*(A*(2*std::log(distance) - 1)) +
+        delta*(-std::exp(-(distance - rmin)/(rmax-rmin))/distance/(rmax-rmin));
+}
+
 Shreds moveParticles(const Shreds& particles, double dt)
 {
+    Shreds k[4];
+    for (int i = 0; i < 4; ++i)
+        k[i].resize(N);
     Shreds ret;
+    ret.resize(N);
+    for (int i = 0; i < N; ++i)
+    {
+        k[0][i] = particles[i];
+        for (int j = 0; j < N; ++j)
+            if (j != i)
+                k[0][i].a += computeForce(particles[i].r, particles[j].r);
+
+        ret[i].r = particles[i].r + k[0][i].v*(dt/2);
+        ret[i].v = particles[i].v + k[0][i].a*(dt/2);
+        ret[i].a = {0., 0.};
+    }
+    for (int i = 0; i < N; ++i)
+    {
+        k[1][i] = ret[i];
+        for (int j = 0; j < N; ++j)
+            if (j != i)
+                k[1][i].a += computeForce(ret[i].r, ret[j].r);
+
+        ret[i].r = particles[i].r + k[1][i].v*(dt/2);
+        ret[i].v = particles[i].v + k[1][i].a*(dt/2);
+        ret[i].a = {0., 0.};
+    }
+    for (int i = 0; i < N; ++i)
+    {
+        k[2][i] = ret[i];
+        for (int j = 0; j < N; ++j)
+            if (j != i)
+                k[2][i].a += computeForce(ret[i].r, ret[j].r);
+
+        ret[i].r = particles[i].r + k[2][i].v*dt;
+        ret[i].v = particles[i].v + k[2][i].a*dt;
+        ret[i].a = {0., 0.};
+    }
+    for (int i = 0; i < N; ++i)
+    {
+        k[3][i] = ret[i];
+        for (int j = 0; j < N; ++j)
+            if (j != i)
+                k[3][i].a += computeForce(ret[i].r, ret[j].r);
+
+        ret[i].r = particles[i].r + (k[0][i].v + k[1][i].v*2 + k[2][i].v*2 + k[3][i].v)*(dt/6);
+        ret[i].v = particles[i].v + (k[0][i].a + k[1][i].a*2 + k[2][i].a*2 + k[3][i].a)*(dt/6);
+        ret[i].a = {0., 0.};
+    }
+    /*    for (auto p = particles.begin(); p != particles.end(); p++, i++)
+    {
+        k[i] = *p;
+        for (int j = 0; j < N; ++j)
+            if (j != i)
+                k[i].a += computeForce(ret[i], ret[j]);
+    }
+
     for (auto p = particles.begin(); p != particles.end(); p++)
     {
         Particle pa = *p;
         pa.r = pa.r + pa.v*dt;
         ret.push_back(pa);
-    }
+        }*/
     return ret;
 }
 
@@ -127,10 +196,15 @@ int main(int argc,char **argv)
     InitializeMagick(*argv);
     Config cfg;
     readConfig(&cfg, "start.cfg");
+    N = getProperty<int>("N", cfg);
+    A = getProperty<double>("A", cfg);
+    rmin = getProperty<double>("rmin", cfg);
+    rmax = getProperty<double>("rmax", cfg);
+    
     vector<Shreds> sequence;
     sequence.push_back(initShreds(cfg));
 
-    for (int i = 1; i < 30; ++i)
+    for (int i = 1; i < 100; ++i)
     {
         sequence.push_back(moveParticles(sequence[i-1], 1.0));
     }

@@ -38,11 +38,17 @@ struct Point
     {
         return {x*k, y*k};
     }
+    inline Point& operator +=(const Point& other)
+    {
+        x = other.x;
+        y = other.y;
+    }
 };
 
 struct Particle
 {
     Point r, v;
+    Point a;
 };
 
 
