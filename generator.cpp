@@ -240,7 +240,6 @@ int main(int argc, char** argv)
     Setting &root = out.getRoot();
     root.add("N", Setting::TypeInt) = N;
 
-    Setting &coords = root.add("particles", Setting::TypeList);
    
     vector<Particle> dots = generate(N, box, vDisp);
     drawHistogramm(dots, nHistogramm);
@@ -248,6 +247,7 @@ int main(int argc, char** argv)
     root.add("rmax", Setting::TypeFloat) = getProperty<double>("rmax", cfg, 10.);
     root.add("A", Setting::TypeFloat) = getProperty<double>("A", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
+    Setting &coords = root.add("particles", Setting::TypeList);
     store(dots, &coords);
     writeFile(out, outputFname);
 
