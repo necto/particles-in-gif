@@ -26,6 +26,18 @@ struct Point
 {
     double x, y;
     inline double len() const { return sqrt(x*x + y*y);}
+    inline Point operator-(const Point& other) const
+    {
+        return {x - other.x, y - other.y};
+    }
+    inline Point operator+(const Point& other) const
+    {
+        return {x + other.x, y + other.y};
+    }
+    inline Point operator*(double k) const
+    {
+        return {x*k, y*k};
+    }
 };
 
 struct Particle
@@ -38,10 +50,9 @@ struct Particle
 template<typename T>
 T getProperty(const char* name, const Config& cfg)
 {
-    T ret;
     try
     {
-        ret = cfg.lookup(name);
+        return cfg.lookup(name);
     }
     catch(const SettingNotFoundException &nfex)
     {
@@ -53,7 +64,6 @@ T getProperty(const char* name, const Config& cfg)
         cerr << "Error on parameter " <<name <<":" <<tex.what() <<endl;
         std::raise(SIGTERM);
     }
-    return ret;
 }
 
 template<>
