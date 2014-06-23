@@ -201,6 +201,8 @@ int main(int argc, char** argv)
     root.add("rezultFile", Setting::TypeString) = getProperty<string>("rezultFile", cfg, "sim.gif");
     root.add("delay", Setting::TypeInt) = getProperty<int>("delay", cfg, 30);
     root.add("endDelay", Setting::TypeInt) = getProperty<int>("endDelay", cfg, 300);
+    root.add("vScaleFactor", Setting::TypeFloat) = getProperty<double>("vScaleFactor", cfg, 0.);
+
     if (dataFilePrefix.empty())
     {
         Setting &coords = root.add("particles", Setting::TypeList);

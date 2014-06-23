@@ -22,6 +22,7 @@ double A, rmin, rmax, T;
 double maxDev;
 int screenWidth;
 int delay, endDelay;
+double vscalefactor;
 
 const double epsilon = 1e-10;
 
@@ -166,8 +167,10 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
         int radius = 1;
         img->draw(DrawableCircle(coor.x - radius, coor.y - radius,
                                  coor.x + radius, coor.y + radius));
-    }
 
+        Point vend = coor + p->v*vscalefactor*scale;
+        img->draw(DrawableLine(coor.x, coor.y, vend.x, vend.y));
+    }
 }
 
 Point computeForce(Point i, Point j)
@@ -318,10 +321,10 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
     text.back() = DrawableText(size.width()/2, size.height() - 20,
                                double2string((box.leftup.x + box.rightdown.x)/2));
     img->draw(text);
-    text.back() = DrawableText(size.width() - 100, 20,
-                               "t:   " + double2string(t) + "\n"
-                               "h:   " + double2string(h) + "\n"
-                               "err: " + double2string(deviation));
+    text.back() = DrawableText(size.width() - 110, 20,
+                               "t:      " + double2string(t) + "\n"
+                               "h:      " + double2string(h) + "\n"
+                               "e r r: "  + double2string(deviation));
     img->draw(text);
 }
 
@@ -335,6 +338,7 @@ void makeMovie(const vector<Scene>& sequence, string fname)
 
     cout <<"Rendering frames..." <<endl;
     vector<Image> v;
+    int fifth = sequence.size()/5;
     for (int i = 0; i < sequence.size(); ++i)
     {
         v.push_back(Image(size, "white"));
@@ -342,7 +346,13 @@ void makeMovie(const vector<Scene>& sequence, string fname)
         drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
                  sequence[i].deviation, size);
         v[i].animationDelay(delay);
+        if ((i - (i/fifth)*fifth) == 0)
+        {
+            cout <<i/fifth*20 <<"% ";
+            cout.flush();
+        }
     }
+    cout <<endl;
     v.back().animationDelay(endDelay);
     cout <<"Storing frames to file "<<fname<<endl;
     writeImages(v.begin(), v.end(), fname);
@@ -369,6 +379,7 @@ int main(int argc,char **argv)
     screenWidth = getProperty<int>("width", cfg);
     delay = getProperty<int>("delay", cfg);
     endDelay = getProperty<int>("endDelay", cfg);
+    vscalefactor = getProperty<double>("vScaleFactor", cfg);
     string outFname = getProperty<string>("rezultFile", cfg);
 
     vector<Scene> sequence;
