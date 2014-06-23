@@ -1,6 +1,7 @@
 #include <Magick++.h>
 #include <Magick++/STL.h>
 #include <sstream>
+#include <list>
 #include "common.h"
 
 using Magick::InitializeMagick;
@@ -9,8 +10,12 @@ using Magick::Image;
 using Magick::writeImages;
 using Magick::DrawableCircle;
 using Magick::DrawableText;
+using Magick::DrawableFont;
+using Magick::DrawableLine;
+using Magick::DrawablePointSize;
 using std::ostringstream;
 using std::ifstream;
+using std::list;
 
 int N;
 double A, rmin, rmax, T;
@@ -292,22 +297,32 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
     img->strokeColor("black");
     img->strokeWidth(0);
 
+    list<Magick::Drawable> text
+        ({DrawablePointSize(15),
+                DrawableFont("sans-serif", Magick::StyleType::NormalStyle, 300,
+                             Magick::StretchType::NormalStretch),
+                Magick::Drawable()});
 
-    img->draw(DrawableText(size.width() - 80, size.height() - 20,
-                           point2string(box.rightdown)));
-    img->draw(DrawableText(10, 20, point2string(box.leftup)));
-    img->draw(DrawableText(10, size.height() - 20,
-                           point2string({box.leftup.x, box.rightdown.y})));
 
-    img->draw(DrawableText(10, size.height()/2,
-                           double2string((box.leftup.y + box.rightdown.y)/2)));
-    img->draw(DrawableText(size.width()/2, size.height() - 20,
-                           double2string((box.leftup.x + box.rightdown.x)/2)));
-
-    img->draw(DrawableText(size.width() - 80, 20,
-                           "t:   " + double2string(t) + "\n"
-                           "h:   " + double2string(h) + "\n"
-                           "err: " + double2string(deviation)));
+    text.back() = DrawableText(size.width() - 80, size.height() - 20,
+                               point2string(box.rightdown));
+    img->draw(text);
+    text.back() = DrawableText(10, 20, point2string(box.leftup));
+    img->draw(text);
+    text.back() = DrawableText(10, size.height() - 20,
+                               point2string({box.leftup.x, box.rightdown.y}));
+    img->draw(text);
+    text.back() = DrawableText(10, size.height()/2,
+                               double2string((box.leftup.y + box.rightdown.y)/2));
+    img->draw(text);
+    text.back() = DrawableText(size.width()/2, size.height() - 20,
+                               double2string((box.leftup.x + box.rightdown.x)/2));
+    img->draw(text);
+    text.back() = DrawableText(size.width() - 100, 20,
+                               "t:   " + double2string(t) + "\n"
+                               "h:   " + double2string(h) + "\n"
+                               "err: " + double2string(deviation));
+    img->draw(text);
 }
 
 void makeMovie(const vector<Scene>& sequence, string fname)
