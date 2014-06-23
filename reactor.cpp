@@ -10,6 +10,7 @@ using Magick::writeImages;
 using Magick::DrawableCircle;
 using Magick::DrawableText;
 using std::ostringstream;
+using std::ifstream;
 
 int N;
 double A, rmin, rmax, T;
@@ -46,24 +47,78 @@ void readConfig(Config* cfg, const char* fname)
     }
 }
 
+Shreds initShredsDual(const string& fnamePrefix)
+{
+    string rfname = fnamePrefix + dataRPostfix;
+    string vfname = fnamePrefix + dataVPostifx;
+    ifstream r(rfname);
+    ifstream v(vfname);
+    if (r.fail())
+    {
+        cerr << "I/O error while opening file " <<rfname <<endl;
+        std::raise(SIGTERM);
+    }
+    if (v.fail())
+    {
+        cerr << "I/O error while opening file " <<vfname <<endl;
+        std::raise(SIGTERM);
+    }
+
+    Shreds ret;
+    ret.resize(N);
+    for (int i = 0; i < N; ++i)
+    {
+        if (v.eof() || r.eof())
+        {
+            cerr << "Not enough data (coors/vels) supplied" <<endl;
+            std::raise(SIGTERM);
+        }
+        Particle p;
+        r >>p.r.x >>p.r.y;
+        v >>p.v.x >>p.v.y;
+        p.a = {0., 0.};
+        ret[i] = p;
+    }
+
+
+    if (r.fail())
+    {
+        cerr << "I/O error while reading coordinates from file " <<rfname <<endl;
+        std::raise(SIGTERM);
+    }
+    if (v.fail())
+    {
+        cerr << "I/O error while reading velocities from  file " <<vfname <<endl;
+        std::raise(SIGTERM);
+    }
+    r.close();
+    v.close();
+    return ret;
+}
+
 Shreds initShreds(const Config& cfg)
 {
-    const Setting &ps = getProperty<const Setting&>("particles", cfg);
-    Shreds ret;
-    for (int i = 0; i < ps.getLength(); ++i)
+    string dataFilePrefix = getProperty<string>("dataFilePrefix", cfg, "");
+    if (dataFilePrefix.empty())
     {
-        const Setting& r = ps[i]["r"];
-        const Setting& v = ps[i]["v"];
-        ret.push_back({{r["x"], r["y"]},{v["x"], v["y"]}});
+        const Setting &ps = getProperty<const Setting&>("particles", cfg);
+        Shreds ret;
+        for (int i = 0; i < ps.getLength(); ++i)
+        {
+            const Setting& r = ps[i]["r"];
+            const Setting& v = ps[i]["v"];
+            ret.push_back({{r["x"], r["y"]},{v["x"], v["y"]}});
+        }
+        return ret;
     }
-    return ret;
+    return initShredsDual(dataFilePrefix);
 }
 
 struct Box
 {
     Point leftup;
     Point rightdown;
-    
+
     inline double width() const
     { return rightdown.x - leftup.x; }
 
@@ -107,7 +162,7 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
         img->draw(DrawableCircle(coor.x - radius, coor.y - radius,
                                  coor.x + radius, coor.y + radius));
     }
-    
+
 }
 
 Point computeForce(Point i, Point j)
@@ -274,7 +329,7 @@ void makeMovie(const vector<Scene>& sequence, string fname)
         v[i].animationDelay(delay);
     }
     v.back().animationDelay(endDelay);
-    cout <<"Storing fremes to file "<<fname<<endl;
+    cout <<"Storing frames to file "<<fname<<endl;
     writeImages(v.begin(), v.end(), fname);
 }
 
@@ -282,7 +337,7 @@ int main(int argc,char **argv)
 {
     InitializeMagick(*argv);
     Config cfg;
-    
+
     const char* fname = "start.cfg";
     if (argc>1) fname = argv[1];
     else
@@ -300,7 +355,7 @@ int main(int argc,char **argv)
     delay = getProperty<int>("delay", cfg);
     endDelay = getProperty<int>("endDelay", cfg);
     string outFname = getProperty<string>("rezultFile", cfg);
-    
+
     vector<Scene> sequence;
     sequence.push_back({initShreds(cfg), 0., 0., 0.});
     double step = getProperty<double>("step", cfg);
@@ -315,5 +370,5 @@ int main(int argc,char **argv)
 
     makeMovie(sequence, outFname);
 
-    return 0; 
+    return 0;
 }

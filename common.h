@@ -2,6 +2,7 @@
 #include <cstring>
 #include <csignal>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -21,6 +22,9 @@ using libconfig::SettingNotFoundException;
 using libconfig::SettingException;
 
 const double PI = 3.1415926;
+
+string dataRPostfix = ".r.txt";
+string dataVPostifx = ".v.txt";
 
 struct Point
 {

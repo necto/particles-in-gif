@@ -1,6 +1,8 @@
 
 #include "common.h"
 
+using std::ofstream;
+
 double random(double max)
 {
     return (double)rand()*max/RAND_MAX;
@@ -52,6 +54,45 @@ void store(const Shreds& dots, Setting* arr)
         v.add("x", Setting::TypeFloat) = dots[i].v.x;
         v.add("y", Setting::TypeFloat) = dots[i].v.y;
     }
+}
+
+void storeDual(const Shreds& dots, const string& filePrefix)
+{
+    string rfname = filePrefix+dataRPostfix;
+    string vfname = filePrefix+dataVPostifx;
+    ofstream coords(rfname);
+    ofstream vels(vfname);
+    if (coords.fail())
+    {
+        cerr << "I/O error while opening output file " <<rfname <<endl;
+        std::raise(SIGTERM);
+    }
+    if (vels.fail())
+    {
+        cerr << "I/O error while opening output file " <<vfname <<endl;
+        std::raise(SIGTERM);
+    }
+
+    for (int i = 0; i < dots.size(); ++i)
+    {
+        coords <<dots[i].r.x <<" "<<dots[i].r.y <<endl;
+        vels <<dots[i].v.x <<" "<<dots[i].v.y <<endl;
+    }
+
+    if (coords.fail())
+    {
+        cerr << "I/O error while writing output file " <<rfname <<endl;
+        std::raise(SIGTERM);
+    }
+    if (vels.fail())
+    {
+        cerr << "I/O error while writing output file " <<vfname <<endl;
+        std::raise(SIGTERM);
+    }
+    coords.close();
+    vels.close();
+    cout <<"Coordinates are written to "<<rfname<<endl;
+    cout <<"Velocities are wirtten to "<<vfname<<endl;
 }
 
 double computeDistribution(const Shreds& dots, int* arr, int len)
@@ -139,6 +180,7 @@ int main(int argc, char** argv)
     double vDisp = getProperty<double>("vDisp", cfg, 10.);
     string outputFname = getProperty<string>("output", cfg, "start.cfg");
     int nHistogramm = getProperty<int>("hist", cfg, 0);
+    string dataFilePrefix = getProperty<string>("dataFilePrefix", cfg, "");
     
     srand(time(NULL));
 
@@ -159,8 +201,16 @@ int main(int argc, char** argv)
     root.add("rezultFile", Setting::TypeString) = getProperty<string>("rezultFile", cfg, "sim.gif");
     root.add("delay", Setting::TypeInt) = getProperty<int>("delay", cfg, 30);
     root.add("endDelay", Setting::TypeInt) = getProperty<int>("endDelay", cfg, 300);
-    Setting &coords = root.add("particles", Setting::TypeList);
-    store(dots, &coords);
+    if (dataFilePrefix.empty())
+    {
+        Setting &coords = root.add("particles", Setting::TypeList);
+        store(dots, &coords);
+    }
+    else
+    {
+        root.add("dataFilePrefix", Setting::TypeString) = dataFilePrefix;
+        storeDual(dots, dataFilePrefix);
+    }
     writeFile(out, outputFname);
 
     return 0;
