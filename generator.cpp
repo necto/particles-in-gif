@@ -157,6 +157,8 @@ int main(int argc, char** argv)
     root.add("step", Setting::TypeFloat) = getProperty<double>("step", cfg, 15.);
     root.add("width", Setting::TypeInt) = getProperty<int>("width", cfg, 1000);
     root.add("rezultFile", Setting::TypeString) = getProperty<string>("rezultFile", cfg, "sim.gif");
+    root.add("delay", Setting::TypeInt) = getProperty<int>("delay", cfg, 30);
+    root.add("endDelay", Setting::TypeInt) = getProperty<int>("endDelay", cfg, 300);
     Setting &coords = root.add("particles", Setting::TypeList);
     store(dots, &coords);
     writeFile(out, outputFname);

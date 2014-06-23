@@ -15,6 +15,7 @@ int N;
 double A, rmin, rmax, T;
 double maxDev;
 int screenWidth;
+int delay, endDelay;
 
 const double epsilon = 1e-10;
 
@@ -270,7 +271,9 @@ void makeMovie(const vector<Scene>& sequence, string fname)
         drawFrame(&v[i], sequence[i].particles, box, scale);
         drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
                  sequence[i].deviation, size);
+        v[i].animationDelay(delay);
     }
+    v.back().animationDelay(endDelay);
     cout <<"Storing fremes to file "<<fname<<endl;
     writeImages(v.begin(), v.end(), fname);
 }
@@ -294,6 +297,8 @@ int main(int argc,char **argv)
     rmax = getProperty<double>("rmax", cfg);
     maxDev = getProperty<double>("deviation", cfg);
     screenWidth = getProperty<int>("width", cfg);
+    delay = getProperty<int>("delay", cfg);
+    endDelay = getProperty<int>("endDelay", cfg);
     string outFname = getProperty<string>("rezultFile", cfg);
     
     vector<Scene> sequence;
