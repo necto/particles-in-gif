@@ -17,8 +17,12 @@ using std::ostringstream;
 using std::ifstream;
 using std::list;
 
+#ifndef POTENTIAL
+#define POTENTIAL 2
+#endif
+
 int N;
-double A, rmin, rmax, T;
+double A, rmin, rmax, T, a, b, r0;
 double maxDev;
 int screenWidth;
 int delay, endDelay;
@@ -173,7 +177,8 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
     }
 }
 
-Point computeForce(Point i, Point j)
+#if POTENTIAL == 1
+Point computeForceComponent(Point i, Point j)
 {
     Point delta = j - i;
     double distance = delta.len();
@@ -181,6 +186,60 @@ Point computeForce(Point i, Point j)
     return delta*(A*(2*std::log(distance) - 1)) +
         delta*(-std::exp(-(distance - rmin)/(rmax-rmin))/distance/(rmax-rmin));
 }
+
+Point computeForce(int i, const Shreds& particles)
+{
+    Point a = {0., 0.};
+    for (int j = 0; j < N; ++j)
+        if (j != i)
+        {
+            a += computeForceComponent(particles[i].r, particles[j].r);
+        }
+    return a;
+}
+#elif POTENTIAL == 2
+double ro(double dist)
+{
+    return (rmax - dist)/(rmax - rmin)*std::exp(-b*(dist - r0)/r0);
+}
+ 
+double dro(double dist)
+{
+    return -std::exp(-b*(dist-r0)/r0)*(1+(rmax-dist)*b/r0)/(rmax-rmin);
+}
+ 
+double dphi(double dist)
+{
+    return std::exp(a*(dist-r0)/r0)*a*a*(dist-r0)/r0/r0;
+}
+ 
+double dF(double x)
+{
+    return 2*x*(1-std::log(x*x));
+}
+ 
+Point computeForce(int i, const Shreds& particles)
+{
+    double sro = 0;
+    Point sdro = {0., 0.};
+    Point sdphi = {0., 0.};
+    for (int j = 0; j < N; ++j)
+    {
+        Point delta = particles[j].r - particles[i].r;
+        double distance = delta.len();
+        if (i != j &&
+            distance > epsilon)
+        {
+            sro += ro(distance);
+            sdro += delta*(1/distance)*dro(distance);
+            sdphi += delta*(1/distance)*dphi(distance);
+        }
+    }
+    return sdro*A*dF(sro) + sdphi;
+}
+#else
+#error unknown potential (only #1 and #2 are coded
+#endif
 
 double computeDeviation(const Shreds& p1, const Shreds& p2)
 {
@@ -202,9 +261,7 @@ Shreds tryMove(const Shreds& particles, double dt)
     for (int i = 0; i < N; ++i)
     {
         k[0][i] = particles[i];
-        for (int j = 0; j < N; ++j)
-            if (j != i)
-                k[0][i].a += computeForce(particles[i].r, particles[j].r);
+        k[0][i].a = computeForce(i, particles);
 
         ret[i].r = particles[i].r + k[0][i].v*(dt/2);
         ret[i].v = particles[i].v + k[0][i].a*(dt/2);
@@ -213,9 +270,7 @@ Shreds tryMove(const Shreds& particles, double dt)
     for (int i = 0; i < N; ++i)
     {
         k[1][i] = ret[i];
-        for (int j = 0; j < N; ++j)
-            if (j != i)
-                k[1][i].a += computeForce(ret[i].r, ret[j].r);
+        k[1][i].a = computeForce(i, ret);
 
         ret[i].r = particles[i].r + k[1][i].v*(dt/2);
         ret[i].v = particles[i].v + k[1][i].a*(dt/2);
@@ -224,9 +279,7 @@ Shreds tryMove(const Shreds& particles, double dt)
     for (int i = 0; i < N; ++i)
     {
         k[2][i] = ret[i];
-        for (int j = 0; j < N; ++j)
-            if (j != i)
-                k[2][i].a += computeForce(ret[i].r, ret[j].r);
+        k[2][i].a = computeForce(i, ret);
 
         ret[i].r = particles[i].r + k[2][i].v*dt;
         ret[i].v = particles[i].v + k[2][i].a*dt;
@@ -235,9 +288,7 @@ Shreds tryMove(const Shreds& particles, double dt)
     for (int i = 0; i < N; ++i)
     {
         k[3][i] = ret[i];
-        for (int j = 0; j < N; ++j)
-            if (j != i)
-                k[3][i].a += computeForce(ret[i].r, ret[j].r);
+        k[3][i].a = computeForce(i, ret);
 
         ret[i].r = particles[i].r + (k[0][i].v + k[1][i].v*2 +
                                      k[2][i].v*2 + k[3][i].v)*(dt/6);
@@ -255,7 +306,8 @@ Scene moveParticles(const Scene& scene, double step, double* h)
     double dev = computeDeviation(p1, p2);
     if (dev < maxDev)
     {
-        *h = *h*2;
+        if (*h*2 <= step)
+            *h = *h*2;
         return Scene({p2, scene.time + step, *h, dev});
     }
     while (dev > maxDev)
@@ -380,6 +432,11 @@ int main(int argc,char **argv)
     delay = getProperty<int>("delay", cfg);
     endDelay = getProperty<int>("endDelay", cfg);
     vscalefactor = getProperty<double>("vScaleFactor", cfg);
+#if POTENTIAL == 2
+    a = getProperty<double>("a", cfg);
+    b = getProperty<double>("b", cfg);
+    r0 = getProperty<double>("r0", cfg);
+#endif
     string outFname = getProperty<string>("rezultFile", cfg);
 
     vector<Scene> sequence;

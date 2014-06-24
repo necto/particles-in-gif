@@ -195,6 +195,9 @@ int main(int argc, char** argv)
     root.add("rmax", Setting::TypeFloat) = getProperty<double>("rmax", cfg, 10.);
     root.add("deviation", Setting::TypeFloat) = getProperty<double>("deviation", cfg, 10.);
     root.add("A", Setting::TypeFloat) = getProperty<double>("A", cfg, 1.);
+    root.add("a", Setting::TypeFloat) = getProperty<double>("a", cfg, 0.);
+    root.add("b", Setting::TypeFloat) = getProperty<double>("b", cfg, 0.);
+    root.add("r0", Setting::TypeFloat) = getProperty<double>("r0", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
     root.add("step", Setting::TypeFloat) = getProperty<double>("step", cfg, 15.);
     root.add("width", Setting::TypeInt) = getProperty<int>("width", cfg, 1000);
