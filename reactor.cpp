@@ -446,7 +446,7 @@ int main(int argc,char **argv)
     vector<Scene> sequence;
     sequence.push_back({initShreds(cfg), 0., 0., 0.});
     double step = getProperty<double>("step", cfg);
-    double h = 0.1;
+    double h = step;
 
     for (int i = 1; ; ++i)
     {
