@@ -238,7 +238,7 @@ Point computeForce(int i, const Shreds& particles)
     return sdro*A*dF(sro) + sdphi;
 }
 #else
-#error unknown potential (only #1 and #2 are coded
+#error unknown potential (only #1 and #2 are coded)
 #endif
 
 double computeDeviation(const Shreds& p1, const Shreds& p2)
@@ -310,9 +310,12 @@ Scene moveParticles(const Scene& scene, double step, double* h)
             *h = *h*2;
         return Scene({p2, scene.time + step, *h, dev});
     }
+    cout <<"selecting step:";
     while (dev > maxDev)
     {
         *h = *h/2;
+        cout <<*h <<" ";
+        cout.flush();
         p2 = p1;
         p1 = tryMove(scene.particles, *h);
         double dt = *h;
@@ -328,6 +331,7 @@ Scene moveParticles(const Scene& scene, double step, double* h)
             std::raise(SIGTERM);
         }
     }
+    cout <<endl;
     return Scene({p1, scene.time + step, *h, dev});
 }
 
