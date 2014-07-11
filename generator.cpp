@@ -131,6 +131,18 @@ void drawHistogramm(const Shreds& dots, int nCells)
     }
 }
 
+void ballance(Shreds* dots)
+{
+    unsigned size = dots->size();
+    unsigned half = size/2;
+    for (unsigned i = 0; i < half; ++i)
+    {
+        (*dots)[i].v = (*dots)[half + i].v*-1;
+    }
+    if (half*2 < size)
+        (*dots)[half].v = {0., 0.};
+}
+
 void readConfig(Config* cfg, const char* fname)
 {
     try
@@ -181,6 +193,7 @@ int main(int argc, char** argv)
     string outputFname = getProperty<string>("output", cfg, "start.cfg");
     int nHistogramm = getProperty<int>("hist", cfg, 0);
     string dataFilePrefix = getProperty<string>("dataFilePrefix", cfg, "");
+    bool ballanced = getProperty<bool>("ballanced", cfg, false);
     
     srand(time(NULL));
 
@@ -190,6 +203,10 @@ int main(int argc, char** argv)
 
    
     vector<Particle> dots = generate(N, box, vDisp);
+    if (ballanced)
+    {
+        ballance(&dots);
+    }
     drawHistogramm(dots, nHistogramm);
     root.add("rmin", Setting::TypeFloat) = getProperty<double>("rmin", cfg, 1.);
     root.add("rmax", Setting::TypeFloat) = getProperty<double>("rmax", cfg, 10.);
