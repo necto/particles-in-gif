@@ -424,13 +424,20 @@ Scene moveParticles(const Scene& scene, double step, double* h)
 {
     Shreds p1 = tryMove(tryMove(scene.particles, *h), *h);
     Shreds p2 = tryMove(scene.particles, *h*2);
+    double dt = *h;
+    while (dt < step)
+    {
+        p1 = tryMove(tryMove(p1, *h), *h);
+        p2 = tryMove(p2, *h*2);
+        dt += *h*2;
+    }
     double dev = computeDeviation(p1, p2);
     if (dev < maxDev)
     {
         if (*h*2 <= step)
             *h = *h*2;
         KeepInBox(&p2);
-        return Scene({p2, scene.time + step, *h, dev});
+        return Scene({p2, scene.time + dt, *h, dev});
     }
     cout <<"selecting step:";
     while (dev > maxDev)
@@ -440,7 +447,7 @@ Scene moveParticles(const Scene& scene, double step, double* h)
         cout.flush();
         p2 = p1;
         p1 = tryMove(scene.particles, *h);
-        double dt = *h;
+        dt = *h;
         while (dt < step)
         {
             p1 = tryMove(p1, *h);
@@ -455,7 +462,7 @@ Scene moveParticles(const Scene& scene, double step, double* h)
     }
     cout <<endl;
     KeepInBox(&p1);
-    return Scene({p1, scene.time + step, *h, dev});
+    return Scene({p1, scene.time + dt, *h, dev});
 }
 
 string point2string(Point p)
