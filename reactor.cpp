@@ -1,7 +1,9 @@
 #include <Magick++.h>
 #include <Magick++/STL.h>
+#include <fstream>
 #include <sstream>
 #include <list>
+#include <stdexcept>
 #include "common.h"
 
 using Magick::InitializeMagick;
@@ -16,6 +18,7 @@ using Magick::DrawablePointSize;
 using std::ostringstream;
 using std::ifstream;
 using std::list;
+using std::cin;
 
 #ifndef POTENTIAL
 #define POTENTIAL 3
@@ -549,6 +552,23 @@ void makeMovie(const vector<Scene>& sequence, string fname)
     writeImages(v.begin(), v.end(), fname);
 }
 
+void describe(int iter, const Scene& sc)
+{
+    cout <<"k = " <<sc.K <<"  u = " <<sc.U <<" e = " <<sc.K + sc.U<<endl;
+    std::ofstream file("State/" + 
+                       std::to_string(iter) + "_" + double2string(sc.time) + ".txt");
+    file <<"#moment="<<iter<<"	t=" <<sc.time <<"	k="
+         <<sc.K <<"	u="<<sc.U <<"	e=" <<sc.K + sc.U<<endl;
+    file <<"#n= " <<N<<endl;
+    file <<"#x	y	vx	vy"<<endl;
+    for (int i = 0; i < N; ++i)
+    {
+        file <<sc.particles[i].r.x <<"    "<<sc.particles[i].r.y <<"    "
+             <<sc.particles[i].v.x <<"    "<<sc.particles[i].v.y <<endl;
+    }
+    file.close();
+}
+
 int main(int argc,char **argv)
 {
     InitializeMagick(*argv);
@@ -607,6 +627,32 @@ int main(int argc,char **argv)
     }
 
     makeMovie(sequence, outFname);
+
+    int stN = 0;
+    do
+    {
+        cout <<"Input state # to get it's energy:>";
+        cout.flush();
+        std::string word;
+        if (cin >> word)
+        {
+            try
+            {
+                stN = std::stoi(word);
+            }
+            catch(std::invalid_argument ex)
+            {
+                break;
+            }
+            if (stN == 0) break;
+            if (0 > stN || stN >= sequence.size())
+                cout <<"Nonexistent state "<< stN <<endl;
+            else
+                describe(stN, sequence[stN]);
+        }
+        else break;
+        
+    } while (true);
 
     return 0;
 }
