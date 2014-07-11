@@ -18,15 +18,24 @@ using std::ifstream;
 using std::list;
 
 #ifndef POTENTIAL
-#define POTENTIAL 2
+#define POTENTIAL 3
+#endif
+
+#ifndef INTEGRATOR
+#define INTEGRATOR 2
 #endif
 
 int N;
 double A, rmin, rmax, T, a, b, r0;
+double eps, sigma, sigma6, m;
+Point G;
 double maxDev;
 int screenWidth;
 int delay, endDelay;
 double vscalefactor;
+
+Point box;
+bool keepInBox;
 
 const double epsilon = 1e-10;
 
@@ -36,6 +45,8 @@ struct Scene
     double time;
     double h;
     double deviation;
+    double U;
+    double K;
 };
 
 void readConfig(Config* cfg, const char* fname)
@@ -197,6 +208,11 @@ Point computeForce(int i, const Shreds& particles)
         }
     return a;
 }
+double computeEnergy(const Shreds& particles)
+{
+    return {0., 0.};
+}
+
 #elif POTENTIAL == 2
 double ro(double dist)
 {
@@ -237,6 +253,52 @@ Point computeForce(int i, const Shreds& particles)
     }
     return sdro*A*dF(sro) + sdphi;
 }
+double computeEnergy(const Shreds& particles)
+{
+    return {0., 0.};
+}
+
+#elif POTENTIAL == 3
+double quad(double arg)
+{
+    double sq = arg*arg;
+    return sq*sq;
+}
+
+Point computeForce(int i, const Shreds& particles)
+{
+    Point grad = {0., 0.};
+    for (int j = 0; j < N; ++j)
+    {
+        Point delta = particles[i].r - particles[j].r;
+        double distsq = delta.lensq();
+        double dist8 = quad(distsq);
+        
+        if (distsq < r0*r0 && distsq > epsilon)
+            grad += delta*(24*eps*sigma6/dist8*(2*sigma6/dist8 - 1));
+    }
+    return (grad - G)*(1/m);
+}
+
+Point computeEnergy(const Shreds& particles)
+{
+    double U = 0;
+    double K = 0;
+    for (int i = 0; i < N; ++i)
+    {
+        for (int j = 0; j < i; ++j)
+        {
+            Point delta = particles[i].r - particles[j].r;
+            double distsq = delta.lensq();
+            double dist6 = distsq*distsq*distsq;
+            if (distsq < r0*r0)
+                U += 4*eps*sigma6/dist6*(sigma6/dist6 - 1);
+        }
+        K += particles[i].v.lensq()*m/2;
+    }
+    return {U, K};
+}
+
 #else
 #error unknown potential (only #1 and #2 are coded)
 #endif
@@ -248,9 +310,16 @@ double computeDeviation(const Shreds& p1, const Shreds& p2)
     {
         dev += (p1[i].r - p2[i].r).len();
     }
+#if INTEGRATOR == 1
     return dev/15;
+#elif INTEGRATOR == 2
+    return dev;
+#else
+#error unknown POTENTIAL
+#endif//POTENTIAL
 }
 
+#if INTEGRATOR == 1
 Shreds tryMove(const Shreds& particles, double dt)
 {
     Shreds k[4];
@@ -298,6 +367,58 @@ Shreds tryMove(const Shreds& particles, double dt)
     }
     return ret;
 }
+#elif INTEGRATOR == 2
+Shreds tryMove(const Shreds& particles, double dt)
+{
+    Shreds ret;
+    ret.resize(N);
+    for (int i = 0; i < N; ++i)
+    {
+        ret[i].a = computeForce(i, ret);
+
+        ret[i].r = particles[i].r + particles[i].v*dt
+            + particles[i].a*(dt*dt/2);
+        ret[i].v = particles[i].v + (particles[i].a + ret[i].a)*(dt/2);
+    }
+    return ret;
+}
+#else
+#error Integrator != 1,2 is undefined
+#endif//INTEGRATOR
+
+void KeepInBox(Shreds* parts)
+{
+    if (keepInBox)
+    {
+        for (int i = 0; i < N; ++i)
+        {
+            if ((*parts)[i].r.x < 0)
+            {
+                (*parts)[i].r.x *= -1;
+                if ((*parts)[i].v.x < 0)
+                    (*parts)[i].v.x *= -1;
+            }
+            if ((*parts)[i].r.y < 0)
+            {
+                (*parts)[i].r.y *= -1;
+                if ((*parts)[i].v.y < 0)
+                    (*parts)[i].v.y *= -1;
+            }
+            if ((*parts)[i].r.x > box.x)
+            {
+                (*parts)[i].r.x = 2*box.x - (*parts)[i].r.x;
+                if ((*parts)[i].v.x > 0)
+                    (*parts)[i].v.x *= -1;
+            }
+            if ((*parts)[i].r.y > box.y)
+            {
+                (*parts)[i].r.y = 2*box.y - (*parts)[i].r.y;
+                if ((*parts)[i].v.y > 0)
+                    (*parts)[i].v.y *= -1;
+            }
+        }
+    }
+}
 
 Scene moveParticles(const Scene& scene, double step, double* h)
 {
@@ -308,6 +429,7 @@ Scene moveParticles(const Scene& scene, double step, double* h)
     {
         if (*h*2 <= step)
             *h = *h*2;
+        KeepInBox(&p2);
         return Scene({p2, scene.time + step, *h, dev});
     }
     cout <<"selecting step:";
@@ -332,6 +454,7 @@ Scene moveParticles(const Scene& scene, double step, double* h)
         }
     }
     cout <<endl;
+    KeepInBox(&p1);
     return Scene({p1, scene.time + step, *h, dev});
 }
 
@@ -350,7 +473,8 @@ string double2string(double val)
 }
 
 void drawInfo(Image* img, const Box& box, double scale, double t,
-              double h, double deviation, const Geometry& size)
+              double h, double deviation, double U, double K,
+              const Geometry& size)
 {
     img->fillColor("black");
     img->strokeColor("black");
@@ -380,7 +504,10 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
     text.back() = DrawableText(size.width() - 110, 20,
                                "t:      " + double2string(t) + "\n"
                                "h:      " + double2string(h) + "\n"
-                               "e r r: "  + double2string(deviation));
+                               "e r r: "  + double2string(deviation) + "\n"
+                               "K:      " + double2string(K) + "\n"
+                               "U:      " + double2string(U) + "\n"
+                               "E:      " + double2string(K+U));
     img->draw(text);
 }
 
@@ -400,7 +527,8 @@ void makeMovie(const vector<Scene>& sequence, string fname)
         v.push_back(Image(size, "white"));
         drawFrame(&v[i], sequence[i].particles, box, scale);
         drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
-                 sequence[i].deviation, size);
+                 sequence[i].deviation, sequence[i].U, sequence[i].K,
+                 size);
         v[i].animationDelay(delay);
         if ((i - (i/fifth)*fifth) == 0)
         {
@@ -440,8 +568,21 @@ int main(int argc,char **argv)
     a = getProperty<double>("a", cfg);
     b = getProperty<double>("b", cfg);
     r0 = getProperty<double>("r0", cfg);
+#elif POTENTIAL == 3
+    r0 = getProperty<double>("r0", cfg);
+    eps = getProperty<double>("epsilon", cfg);
+    sigma = getProperty<double>("sigma", cfg);
+    sigma6 = sigma*sigma*sigma*sigma*sigma*sigma;
+    m = getProperty<double>("m", cfg);
+    double gg = getProperty<double>("G", cfg);
+    G.x = 0;
+    G.y = gg;
 #endif
     string outFname = getProperty<string>("rezultFile", cfg);
+    keepInBox = getProperty<bool>("keepInBox", cfg, false);
+    if (keepInBox)
+        box = getProperty<Point>("box", cfg, Point{0., 0.});
+    
 
     vector<Scene> sequence;
     sequence.push_back({initShreds(cfg), 0., 0., 0.});
@@ -451,6 +592,9 @@ int main(int argc,char **argv)
     for (int i = 1; ; ++i)
     {
         sequence.push_back(moveParticles(sequence[i-1], step, &h));
+        Point E = computeEnergy(sequence[i].particles);
+        sequence[i].U = E.x;
+        sequence[i].K = E.y;
         cout <<"computed state # " <<i <<" time: " <<sequence[i].time <<endl;
         if (sequence[i].time > T) break;
     }

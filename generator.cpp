@@ -194,6 +194,7 @@ int main(int argc, char** argv)
     int nHistogramm = getProperty<int>("hist", cfg, 0);
     string dataFilePrefix = getProperty<string>("dataFilePrefix", cfg, "");
     bool ballanced = getProperty<bool>("ballanced", cfg, false);
+    bool keepInBox = getProperty<bool>("keepInBox", cfg, false);
     
     srand(time(NULL));
 
@@ -215,6 +216,10 @@ int main(int argc, char** argv)
     root.add("a", Setting::TypeFloat) = getProperty<double>("a", cfg, 0.);
     root.add("b", Setting::TypeFloat) = getProperty<double>("b", cfg, 0.);
     root.add("r0", Setting::TypeFloat) = getProperty<double>("r0", cfg, 1.);
+    root.add("epsilon", Setting::TypeFloat) = getProperty<double>("epsilon", cfg, 1.);
+    root.add("sigma", Setting::TypeFloat) = getProperty<double>("sigma", cfg, 1.);
+    root.add("m", Setting::TypeFloat) = getProperty<double>("m", cfg, 1.);
+    root.add("G", Setting::TypeFloat) = getProperty<double>("G", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
     root.add("step", Setting::TypeFloat) = getProperty<double>("step", cfg, 15.);
     root.add("width", Setting::TypeInt) = getProperty<int>("width", cfg, 1000);
@@ -222,6 +227,14 @@ int main(int argc, char** argv)
     root.add("delay", Setting::TypeInt) = getProperty<int>("delay", cfg, 30);
     root.add("endDelay", Setting::TypeInt) = getProperty<int>("endDelay", cfg, 300);
     root.add("vScaleFactor", Setting::TypeFloat) = getProperty<double>("vScaleFactor", cfg, 0.);
+
+    if (keepInBox)
+    {
+        Setting &r = root.add("box", Setting::TypeGroup);
+        r.add("x", Setting::TypeFloat) = box.x;
+        r.add("y", Setting::TypeFloat) = box.y;
+        root.add("keepInBox", Setting::TypeBoolean) = true;
+    }
 
     if (dataFilePrefix.empty())
     {

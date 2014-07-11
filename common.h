@@ -29,7 +29,8 @@ string dataVPostifx = ".v.txt";
 struct Point
 {
     double x, y;
-    inline double len() const { return sqrt(x*x + y*y);}
+    inline double lensq() const { return x*x + y*y; }
+    inline double len() const { return sqrt(lensq()); }
     inline Point operator-(const Point& other) const
     {
         return {x - other.x, y - other.y};
