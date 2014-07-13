@@ -228,6 +228,12 @@ int main(int argc, char** argv)
     root.add("endDelay", Setting::TypeInt) = getProperty<int>("endDelay", cfg, 300);
     root.add("vScaleFactor", Setting::TypeFloat) = getProperty<double>("vScaleFactor", cfg, 0.);
     root.add("drawEnergy", Setting::TypeBoolean) = getProperty<bool>("drawEnergy", cfg, false);
+    root.add("dumpPointsSeparately", Setting::TypeBoolean) =
+        getProperty<bool>("dumpPointsSeparately", cfg, true);
+    root.add("askForSpecificDumps", Setting::TypeBoolean) =
+        getProperty<bool>("askForSpecificDumps", cfg, true);
+    root.add("dumpPointsOnEachFrame", Setting::TypeBoolean) =
+        getProperty<bool>("dumpPointsOnEachFrame", cfg, true);
 
     if (keepInBox)
     {

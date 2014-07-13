@@ -39,7 +39,8 @@ double vscalefactor;
 
 Point box;
 bool keepInBox;
-bool drawEnergy = false;
+bool drawEnergy = false,
+    dumpPointsSeparately = true;
 
 const double epsilon = 1e-10;
 
@@ -173,12 +174,6 @@ Box getBox(const vector<Scene>& seq)
             if (i->r.y > ret.rightdown.y) ret.rightdown.y = i->r.y;
         }
     return ret;
-}
-
-Point mirrorY(Point r, const Box& box)
-{
-    r.y = box.rightdown.y - r.y;
-    return r;
 }
 
 Point toScreen(Point r, const Box& box, double scale)
@@ -344,6 +339,24 @@ void makeMovie(const vector<Scene>& sequence, string fname)
     writeImages(v.begin(), v.end(), fname);
 }
 
+void dumpPoints(const Shreds& particles,
+                std::string rfname, std::string vfname,
+                std::ios_base::openmode mode)
+{
+    std::ofstream fr(rfname, mode);
+    std::ofstream fv(vfname, mode);
+    for (int i = 0; i < N; ++i)
+    {
+        fr <<particles[i].r.x <<"    "<<particles[i].r.y <<endl;
+        fv <<particles[i].v.x <<"    "<<particles[i].v.y <<endl;
+    }
+    fr<<endl<<endl;
+    fv<<endl<<endl;
+
+    fr.close();
+    fv.close();
+}
+
 void describe(int iter, const Scene& sc)
 {
     cout <<"k = " <<sc.K <<"  u = " <<sc.U <<" e = " <<sc.K + sc.U<<endl;
@@ -352,13 +365,52 @@ void describe(int iter, const Scene& sc)
     file <<"#moment="<<iter<<"	t=" <<sc.time <<"	k="
          <<sc.K <<"	u="<<sc.U <<"	e=" <<sc.K + sc.U<<endl;
     file <<"#n= " <<N<<endl;
-    file <<"#x	y	vx	vy"<<endl;
-    for (int i = 0; i < N; ++i)
+    if (dumpPointsSeparately)
     {
-        file <<sc.particles[i].r.x <<"    "<<sc.particles[i].r.y <<"    "
-             <<sc.particles[i].v.x <<"    "<<sc.particles[i].v.y <<endl;
+        dumpPoints(sc.particles,
+                   "State/particles.r" + std::to_string(iter) + ".txt",
+                   "State/particles.v" + std::to_string(iter) + ".txt",
+                   std::ios_base::out|std::ios_base::trunc);
+    }
+    else
+    {
+        file <<"#x	y	vx	vy"<<endl;
+        for (int i = 0; i < N; ++i)
+        {
+            file <<sc.particles[i].r.x <<"    "<<sc.particles[i].r.y <<"    "
+                 <<sc.particles[i].v.x <<"    "<<sc.particles[i].v.y <<endl;
+        }
     }
     file.close();
+}
+
+void describeNeccessaryFrames(vector<Scene>& sequence)
+{
+    int stN = 0;
+    do
+    {
+        cout <<"Input state # to get it's energy:>";
+        cout.flush();
+        std::string word;
+        if (cin >> word)
+        {
+            try
+            {
+                stN = std::stoi(word);
+            }
+            catch(std::invalid_argument ex)
+            {
+                break;
+            }
+            if (stN == 0) break;
+            if (0 > stN || stN >= sequence.size())
+                cout <<"Nonexistent state "<< stN <<endl;
+            else
+                describe(stN, sequence[stN]);
+        }
+        else break;
+
+    } while (true);
 }
 
 int main(int argc,char **argv)
@@ -402,6 +454,9 @@ int main(int argc,char **argv)
     if (keepInBox)
         box = getProperty<Point>("box", cfg, Point{0., 0.});
     drawEnergy = getProperty<bool>("drawEnergy", cfg, false);
+    dumpPointsSeparately = getProperty<bool>("dumpPointsSeparately", cfg, true);
+    bool askForSpecificDumps = getProperty<bool>("askForSpecificDumps", cfg, true);
+    bool dumpPointsOnEachFrame = getProperty<bool>("askForSpecificDumps", cfg, true);
     
 
     vector<Scene> sequence;
@@ -416,36 +471,18 @@ int main(int argc,char **argv)
         sequence[i].U = E.x;
         sequence[i].K = E.y;
         cout <<"computed state # " <<i <<" time: " <<sequence[i].time <<endl;
+        if (dumpPointsSeparately)
+        {
+            dumpPoints(sequence[i].particles, "r.txt", "v.txt",
+                       std::ios_base::app|std::ios_base::ate|std::ios_base::out);
+        }
         if (sequence[i].time > T) break;
     }
 
     makeMovie(sequence, outFname);
 
-    int stN = 0;
-    do
-    {
-        cout <<"Input state # to get it's energy:>";
-        cout.flush();
-        std::string word;
-        if (cin >> word)
-        {
-            try
-            {
-                stN = std::stoi(word);
-            }
-            catch(std::invalid_argument ex)
-            {
-                break;
-            }
-            if (stN == 0) break;
-            if (0 > stN || stN >= sequence.size())
-                cout <<"Nonexistent state "<< stN <<endl;
-            else
-                describe(stN, sequence[stN]);
-        }
-        else break;
-        
-    } while (true);
+    if (askForSpecificDumps)
+        describeNeccessaryFrames(sequence);
 
     return 0;
 }
