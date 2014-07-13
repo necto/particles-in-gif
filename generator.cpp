@@ -211,7 +211,6 @@ int main(int argc, char** argv)
     drawHistogramm(dots, nHistogramm);
     root.add("rmin", Setting::TypeFloat) = getProperty<double>("rmin", cfg, 1.);
     root.add("rmax", Setting::TypeFloat) = getProperty<double>("rmax", cfg, 10.);
-    root.add("deviation", Setting::TypeFloat) = getProperty<double>("deviation", cfg, 10.);
     root.add("A", Setting::TypeFloat) = getProperty<double>("A", cfg, 1.);
     root.add("a", Setting::TypeFloat) = getProperty<double>("a", cfg, 0.);
     root.add("b", Setting::TypeFloat) = getProperty<double>("b", cfg, 0.);
@@ -221,6 +220,10 @@ int main(int argc, char** argv)
     root.add("m", Setting::TypeFloat) = getProperty<double>("m", cfg, 1.);
     root.add("G", Setting::TypeFloat) = getProperty<double>("G", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
+    root.add("stepautofit", Setting::TypeBoolean) = getProperty<bool>("stepautofit", cfg, false);
+    root.add("h", Setting::TypeFloat) = getProperty<double>("h", cfg, 0.1);
+    root.add("Nstep", Setting::TypeInt) = getProperty<int>("Nstep", cfg, 10);
+    root.add("deviation", Setting::TypeFloat) = getProperty<double>("deviation", cfg, 10.);
     root.add("step", Setting::TypeFloat) = getProperty<double>("step", cfg, 15.);
     root.add("width", Setting::TypeInt) = getProperty<int>("width", cfg, 1000);
     root.add("rezultFile", Setting::TypeString) = getProperty<string>("rezultFile", cfg, "sim.gif");

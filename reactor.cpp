@@ -40,7 +40,8 @@ double vscalefactor;
 Point box;
 bool keepInBox;
 bool drawEnergy = false,
-    dumpPointsSeparately = true;
+    dumpPointsSeparately = true,
+    stepautofit = false;
 
 const double epsilon = 1e-10;
 
@@ -294,9 +295,12 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
                              Magick::StretchType::NormalStretch),
                 Magick::Drawable()});
     text.back() = DrawableText(size.width() - 110, 20,
-                               "t:      " + double2string(t) + "\n"
-                               "h:      " + double2string(h) + "\n"
-                               "e r r: "  + double2string(deviation) + "\n" +
+                               "t:      " + double2string(t) + "\n" + 
+                               (stepautofit? 
+                                (
+                                 "h:      " + double2string(h) + "\n"
+                                 "e r r: "  + double2string(deviation) + "\n") :
+                                (std::string())) +
                                (drawEnergy ?
                                 (
                                  "K:      " + double2string(K) + "\n"
@@ -306,7 +310,7 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
     img->draw(text);
 }
 
-void makeMovie(const vector<Scene>& sequence, string fname)
+void makeMovie(const vector<Scene>& sequence, string fname, int nStep)
 {
     Box originalBox = getBox(sequence);
     Box box = originalBox;
@@ -317,21 +321,26 @@ void makeMovie(const vector<Scene>& sequence, string fname)
 
     cout <<"Rendering frames..." <<endl;
     vector<Image> v;
-    int fifth = sequence.size()/5;
+    int fifth = (sequence.size() != 0 ?
+                 sequence.size()/5:
+                 sequence.size()+1);
+    int imgNum = 0;
     for (int i = 0; i < sequence.size(); ++i)
     {
+        if (!stepautofit && (((i/nStep)*nStep - i) != 0)) continue;
         v.push_back(Image(size, "white"));
-        drawBox(&v[i], originalBox, box, scale, size);
-        drawFrame(&v[i], sequence[i].particles, box, scale);
-        drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
+        drawBox(&v[imgNum], originalBox, box, scale, size);
+        drawFrame(&v[imgNum], sequence[i].particles, box, scale);
+        drawInfo(&v[imgNum], box, scale, sequence[i].time, sequence[i].h,
                  sequence[i].deviation, sequence[i].U, sequence[i].K,
                  size);
-        v[i].animationDelay(delay);
+        v[imgNum].animationDelay(delay);
         if ((i - (i/fifth)*fifth) == 0)
         {
             cout <<i/fifth*20 <<"% ";
             cout.flush();
         }
+        ++imgNum;
     }
     cout <<endl;
     v.back().animationDelay(endDelay);
@@ -462,8 +471,23 @@ int main(int argc,char **argv)
 
     vector<Scene> sequence;
     sequence.push_back({initShreds(cfg), t0, 0., 0.});
-    double step = getProperty<double>("step", cfg);
-    double h = step;
+
+    stepautofit = getProperty<bool>("stepautofit", cfg, false);
+    double step = 0, h = 0;
+    int NStep = 0;
+    if (stepautofit)
+    {
+        step = getProperty<double>("step", cfg);
+        h = step;
+        NStep = 0;
+    }
+    else
+    {
+        h = getProperty<double>("h", cfg);
+        NStep = getProperty<int>("Nstep", cfg);
+        step = 0;
+    }
+
 
     for (int i = 1; ; ++i)
     {
@@ -471,7 +495,11 @@ int main(int argc,char **argv)
         Point E = computeEnergy(sequence[i].particles);
         sequence[i].U = E.x;
         sequence[i].K = E.y;
-        cout <<"computed state # " <<i <<" time: " <<sequence[i].time <<endl;
+        cout <<"computed state # " <<i;
+        if (!stepautofit)
+            if ((i/NStep)*NStep - i == 0)
+                cout <<"(frame #"<< i/NStep <<")";
+        cout <<" time: " <<sequence[i].time <<endl;
         if (dumpPointsSeparately)
         {
             dumpPoints(sequence[i].particles, "r.txt", "v.txt",
@@ -480,7 +508,7 @@ int main(int argc,char **argv)
         if (sequence[i].time > T) break;
     }
 
-    makeMovie(sequence, outFname);
+    makeMovie(sequence, outFname, NStep);
 
     if (askForSpecificDumps)
         describeNeccessaryFrames(sequence);
