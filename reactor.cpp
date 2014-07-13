@@ -457,10 +457,11 @@ int main(int argc,char **argv)
     dumpPointsSeparately = getProperty<bool>("dumpPointsSeparately", cfg, true);
     bool askForSpecificDumps = getProperty<bool>("askForSpecificDumps", cfg, true);
     bool dumpPointsOnEachFrame = getProperty<bool>("askForSpecificDumps", cfg, true);
+    double t0 = getProperty<double>("t0", cfg, 0.);
     
 
     vector<Scene> sequence;
-    sequence.push_back({initShreds(cfg), 0., 0., 0.});
+    sequence.push_back({initShreds(cfg), t0, 0., 0.});
     double step = getProperty<double>("step", cfg);
     double h = step;
 

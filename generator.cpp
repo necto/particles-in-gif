@@ -234,6 +234,8 @@ int main(int argc, char** argv)
         getProperty<bool>("askForSpecificDumps", cfg, true);
     root.add("dumpPointsOnEachFrame", Setting::TypeBoolean) =
         getProperty<bool>("dumpPointsOnEachFrame", cfg, true);
+    root.add("t0", Setting::TypeFloat) = getProperty<double>("t0", cfg, 0.);
+
 
     if (keepInBox)
     {
