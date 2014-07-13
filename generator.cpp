@@ -227,6 +227,7 @@ int main(int argc, char** argv)
     root.add("delay", Setting::TypeInt) = getProperty<int>("delay", cfg, 30);
     root.add("endDelay", Setting::TypeInt) = getProperty<int>("endDelay", cfg, 300);
     root.add("vScaleFactor", Setting::TypeFloat) = getProperty<double>("vScaleFactor", cfg, 0.);
+    root.add("drawEnergy", Setting::TypeBoolean) = getProperty<bool>("drawEnergy", cfg, false);
 
     if (keepInBox)
     {

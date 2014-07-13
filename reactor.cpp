@@ -39,6 +39,7 @@ double vscalefactor;
 
 Point box;
 bool keepInBox;
+bool drawEnergy = false;
 
 const double epsilon = 1e-10;
 
@@ -174,6 +175,20 @@ Box getBox(const vector<Scene>& seq)
     return ret;
 }
 
+Point mirrorY(Point r, const Box& box)
+{
+    r.y = box.rightdown.y - r.y;
+    return r;
+}
+
+Point toScreen(Point r, const Box& box, double scale)
+{
+    Point leftdown = {box.leftup.x, box.rightdown.y};
+    Point tmp = (r - leftdown)*scale;
+    tmp.y *= -1;
+    return tmp;
+}
+
 void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
 {
     img->fillColor("red");
@@ -181,13 +196,16 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
     img->strokeWidth(1);
     for (auto p = parts.begin(); p != parts.end(); p++)
     {
-        Point coor = (p->r - box.leftup)*scale;
+        Point coor = toScreen(p->r, box, scale);
         int radius = 1;
-        img->draw(DrawableCircle(coor.x - radius, coor.y - radius,
-                                 coor.x + radius, coor.y + radius));
+        img->draw(DrawableCircle
+                  (coor.x - radius, coor.y - radius,
+                   coor.x + radius, coor.y + radius));
 
-        Point vend = coor + p->v*vscalefactor*scale;
-        img->draw(DrawableLine(coor.x, coor.y, vend.x, vend.y));
+        Point vsegm = p->v*vscalefactor;
+        Point vend = toScreen(p->r + vsegm, box, scale);
+        img->draw(DrawableLine(coor.x, coor.y,
+                               vend.x, vend.y));
     }
 }
 
@@ -195,18 +213,76 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
 
 #include "integrator.cpp"
 
-string point2string(Point p)
-{
-    ostringstream oss;
-    oss <<std::setprecision(3) <<"(" <<p.x <<", " <<p.y <<")";
-    return oss.str();
-}
 
 string double2string(double val)
 {
     ostringstream oss;
     oss <<std::setprecision(3) <<val;
     return oss.str();
+}
+
+string point2string(Point p)
+{
+    ostringstream oss;
+    oss <<std::setprecision(2) <<"(" <<p.x <<", "
+        <<p.y <<")";
+    return oss.str();
+}
+
+void drawCoords(Image* img, const Box& original, double scale,
+                const Geometry& size)
+{
+    img->fillColor("black");
+    img->strokeColor("black");
+    img->strokeWidth(0);
+
+    list<Magick::Drawable> text
+        ({DrawablePointSize(15),
+                DrawableFont("sans-serif", Magick::StyleType::NormalStyle, 300,
+                             Magick::StretchType::NormalStretch),
+                Magick::Drawable()});
+
+
+    text.back() = DrawableText(size.width() - 120, size.height() - 40,
+                               point2string({original.rightdown.x,
+                                           original.leftup.y}));
+    img->draw(text);
+    text.back() = DrawableText(30, 40, point2string
+                               ({original.leftup.x,
+                                       original.rightdown.y}));
+    img->draw(text);
+    text.back() = DrawableText(30, size.height() - 40,
+                               point2string(original.leftup));
+    img->draw(text);
+    text.back() = DrawableText(30, size.height()/2,
+                               double2string((original.leftup.y + original.rightdown.y)/2));
+    img->draw(text);
+    text.back() = DrawableText(size.width()/2, size.height() - 40,
+                               double2string((original.leftup.x + original.rightdown.x)/2));
+    img->draw(text);
+}
+
+void drawBox(Image* img, const Box& original,
+             const Box& box, double scale,
+             const Geometry& size)
+{
+    drawCoords(img, original, scale, size);
+    img->fillColor("black");
+    img->strokeColor("gray");
+    img->strokeWidth(1);
+
+    Point leftup = toScreen(original.leftup, box, scale);
+    Point rightdown = toScreen(original.rightdown, box, scale);
+
+    img->draw(DrawableLine(leftup.x, leftup.y,
+                           leftup.x, rightdown.y));
+    img->draw(DrawableLine(leftup.x, rightdown.y,
+                           rightdown.x, rightdown.y));
+    img->draw(DrawableLine(rightdown.x, rightdown.y,
+                           rightdown.x, leftup.y));
+    img->draw(DrawableLine(rightdown.x, leftup.y,
+                           leftup.x, leftup.y));
+
 }
 
 void drawInfo(Image* img, const Box& box, double scale, double t,
@@ -222,35 +298,23 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
                 DrawableFont("sans-serif", Magick::StyleType::NormalStyle, 300,
                              Magick::StretchType::NormalStretch),
                 Magick::Drawable()});
-
-
-    text.back() = DrawableText(size.width() - 80, size.height() - 20,
-                               point2string(box.rightdown));
-    img->draw(text);
-    text.back() = DrawableText(10, 20, point2string(box.leftup));
-    img->draw(text);
-    text.back() = DrawableText(10, size.height() - 20,
-                               point2string({box.leftup.x, box.rightdown.y}));
-    img->draw(text);
-    text.back() = DrawableText(10, size.height()/2,
-                               double2string((box.leftup.y + box.rightdown.y)/2));
-    img->draw(text);
-    text.back() = DrawableText(size.width()/2, size.height() - 20,
-                               double2string((box.leftup.x + box.rightdown.x)/2));
-    img->draw(text);
     text.back() = DrawableText(size.width() - 110, 20,
                                "t:      " + double2string(t) + "\n"
                                "h:      " + double2string(h) + "\n"
-                               "e r r: "  + double2string(deviation) + "\n"
-                               "K:      " + double2string(K) + "\n"
-                               "U:      " + double2string(U) + "\n"
-                               "E:      " + double2string(K+U));
+                               "e r r: "  + double2string(deviation) + "\n" +
+                               (drawEnergy ?
+                                (
+                                 "K:      " + double2string(K) + "\n"
+                                 "U:      " + double2string(U) + "\n"
+                                 "E:      " + double2string(K+U)):
+                                std::string()));
     img->draw(text);
 }
 
 void makeMovie(const vector<Scene>& sequence, string fname)
 {
-    Box box = getBox(sequence);
+    Box originalBox = getBox(sequence);
+    Box box = originalBox;
     box.enlarge(0.1);
     double width = screenWidth;
     Geometry size(width, box.aspectRatio()*width);
@@ -262,6 +326,7 @@ void makeMovie(const vector<Scene>& sequence, string fname)
     for (int i = 0; i < sequence.size(); ++i)
     {
         v.push_back(Image(size, "white"));
+        drawBox(&v[i], originalBox, box, scale, size);
         drawFrame(&v[i], sequence[i].particles, box, scale);
         drawInfo(&v[i], box, scale, sequence[i].time, sequence[i].h,
                  sequence[i].deviation, sequence[i].U, sequence[i].K,
@@ -336,6 +401,7 @@ int main(int argc,char **argv)
     keepInBox = getProperty<bool>("keepInBox", cfg, false);
     if (keepInBox)
         box = getProperty<Point>("box", cfg, Point{0., 0.});
+    drawEnergy = getProperty<bool>("drawEnergy", cfg, false);
     
 
     vector<Scene> sequence;
