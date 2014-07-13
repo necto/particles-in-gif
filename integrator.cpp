@@ -119,7 +119,11 @@ void KeepInBox(Shreds* parts)
 Scene moveParticles(const Scene& scene, double step, double* h)
 {
     if (!stepautofit)
-        return Scene({tryMove(scene.particles, *h), scene.time + *h, *h, 0.});
+    {
+        Shreds pp = tryMove(scene.particles, *h);
+        KeepInBox(&pp);
+        return Scene({pp, scene.time + *h, *h, 0.});
+    }
     Shreds p1 = tryMove(tryMove(scene.particles, *h), *h);
     Shreds p2 = tryMove(scene.particles, *h*2);
     double dt = *h;

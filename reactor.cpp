@@ -297,13 +297,11 @@ void drawInfo(Image* img, const Box& box, double scale, double t,
     text.back() = DrawableText(size.width() - 110, 20,
                                "t:      " + double2string(t) + "\n" + 
                                (stepautofit? 
-                                (
-                                 "h:      " + double2string(h) + "\n"
+                                ("h:      " + double2string(h) + "\n"
                                  "e r r: "  + double2string(deviation) + "\n") :
-                                (std::string())) +
+                                ("#:      " + double2string(t/h) + "\n")) +
                                (drawEnergy ?
-                                (
-                                 "K:      " + double2string(K) + "\n"
+                                ("K:      " + double2string(K) + "\n"
                                  "U:      " + double2string(U) + "\n"
                                  "E:      " + double2string(K+U)):
                                 std::string()));
