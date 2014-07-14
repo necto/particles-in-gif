@@ -23,8 +23,8 @@ using libconfig::SettingException;
 
 const double PI = 3.1415926;
 
-string dataRPostfix = ".r.txt";
-string dataVPostifx = ".v.txt";
+const string dataRPostfix = ".r.txt";
+const string dataVPostifx = ".v.txt";
 
 struct Point
 {
@@ -78,13 +78,13 @@ T getProperty(const char* name, const Config& cfg)
 }
 
 template<>
-string getProperty<string>(const char* name, const Config& cfg)
+inline string getProperty<string>(const char* name, const Config& cfg)
 {
     return getProperty<const char*>(name, cfg);
 }
 
 template<>
-Point getProperty<Point>(const char* name, const Config& cfg)
+inline Point getProperty<Point>(const char* name, const Config& cfg)
 {
     Point ret;
     try

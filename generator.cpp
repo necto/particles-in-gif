@@ -220,6 +220,7 @@ int main(int argc, char** argv)
     root.add("m", Setting::TypeFloat) = getProperty<double>("m", cfg, 1.);
     root.add("G", Setting::TypeFloat) = getProperty<double>("G", cfg, 1.);
     root.add("T", Setting::TypeFloat) = getProperty<double>("T", cfg, 15.);
+    root.add("NT", Setting::TypeInt) = getProperty<int>("NT", cfg, 30);
     root.add("stepautofit", Setting::TypeBoolean) = getProperty<bool>("stepautofit", cfg, false);
     root.add("h", Setting::TypeFloat) = getProperty<double>("h", cfg, 0.1);
     root.add("Nstep", Setting::TypeInt) = getProperty<int>("Nstep", cfg, 10);

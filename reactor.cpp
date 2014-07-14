@@ -5,6 +5,7 @@
 #include <list>
 #include <stdexcept>
 #include "common.h"
+#include "potential.h"
 
 using Magick::InitializeMagick;
 using Magick::Geometry;
@@ -20,18 +21,12 @@ using std::ifstream;
 using std::list;
 using std::cin;
 
-#ifndef POTENTIAL
-#define POTENTIAL 3
-#endif
-
 #ifndef INTEGRATOR
 #define INTEGRATOR 2
 #endif
 
+double T;
 int N;
-double A, rmin, rmax, T, a, b, r0;
-double eps, sigma, sigma6, m;
-Point G;
 double maxDev;
 int screenWidth;
 int delay, endDelay;
@@ -204,8 +199,6 @@ void drawFrame(Image* img, const Shreds &parts, const Box& box, double scale)
                                vend.x, vend.y));
     }
 }
-
-#include "potential.cpp"
 
 #include "integrator.cpp"
 
@@ -433,29 +426,12 @@ int main(int argc,char **argv)
     }
     readConfig(&cfg, fname);
     N = getProperty<int>("N", cfg);
-    A = getProperty<double>("A", cfg);
-    T = getProperty<double>("T", cfg);
-    rmin = getProperty<double>("rmin", cfg);
-    rmax = getProperty<double>("rmax", cfg);
     maxDev = getProperty<double>("deviation", cfg);
     screenWidth = getProperty<int>("width", cfg);
     delay = getProperty<int>("delay", cfg);
     endDelay = getProperty<int>("endDelay", cfg);
     vscalefactor = getProperty<double>("vScaleFactor", cfg);
-#if POTENTIAL == 2
-    a = getProperty<double>("a", cfg);
-    b = getProperty<double>("b", cfg);
-    r0 = getProperty<double>("r0", cfg);
-#elif POTENTIAL == 3
-    r0 = getProperty<double>("r0", cfg);
-    eps = getProperty<double>("epsilon", cfg);
-    sigma = getProperty<double>("sigma", cfg);
-    sigma6 = sigma*sigma*sigma*sigma*sigma*sigma;
-    m = getProperty<double>("m", cfg);
-    double gg = getProperty<double>("G", cfg);
-    G.x = 0;
-    G.y = gg;
-#endif
+    readUParams(cfg);
     string outFname = getProperty<string>("rezultFile", cfg);
     keepInBox = getProperty<bool>("keepInBox", cfg, false);
     if (keepInBox)
@@ -478,15 +454,22 @@ int main(int argc,char **argv)
         step = getProperty<double>("step", cfg);
         h = step;
         NStep = 0;
+        T = getProperty<double>("T", cfg) + t0;
     }
     else
     {
         h = getProperty<double>("h", cfg);
         NStep = getProperty<int>("Nstep", cfg);
         step = 0;
+        T = getProperty<int>("NT", cfg)*h + t0;
     }
 
 
+    if (dumpPointsSeparately)
+    {
+        dumpPoints(sequence[0].particles, "r.txt", "v.txt",
+                   std::ios_base::trunc|std::ios_base::out);
+    }
     for (int i = 1; ; ++i)
     {
         sequence.push_back(moveParticles(sequence[i-1], step, &h));
