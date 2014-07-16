@@ -530,7 +530,7 @@ int main(int argc,char **argv)
     drawEnergy = getProperty<bool>("drawEnergy", cfg, false);
     dumpPointsSeparately = getProperty<bool>("dumpPointsSeparately", cfg, true);
     bool askForSpecificDumps = getProperty<bool>("askForSpecificDumps", cfg, true);
-    bool dumpPointsOnEachFrame = getProperty<bool>("askForSpecificDumps", cfg, true);
+    bool dumpPointsOnEachFrame = getProperty<bool>("dumpPointsOnEachFrame", cfg, true);
     double t0 = getProperty<double>("t0", cfg, 0.);
     
 
@@ -556,7 +556,7 @@ int main(int argc,char **argv)
     }
 
 
-    if (dumpPointsSeparately)
+    if (dumpPointsOnEachFrame)
     {
         dumpPoints(sequence[0].particles, "r.txt", "v.txt",
                    std::ios_base::trunc|std::ios_base::out);
@@ -572,7 +572,7 @@ int main(int argc,char **argv)
             if ((i/NStep)*NStep - i == 0)
                 cout <<"(frame #"<< i/NStep <<")";
         cout <<" time: " <<sequence[i].time <<endl;
-        if (dumpPointsSeparately)
+        if (dumpPointsOnEachFrame)
         {
             dumpPoints(sequence[i].particles, "r.txt", "v.txt",
                        std::ios_base::app|std::ios_base::ate|std::ios_base::out);

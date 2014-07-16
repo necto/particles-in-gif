@@ -10,7 +10,7 @@ Shreds tryMove(const Shreds& particles, double dt)
     ret.resize(N);
     for (int i = 0; i < N; ++i)
     {
-        ret[i].a = computeForce(i, ret);
+        ret[i].a = computeForce(i, particles);
 
         ret[i].r = particles[i].r + particles[i].v*dt
             + particles[i].a*(dt*dt/2);
