@@ -1,3 +1,4 @@
+#include <math.h>
 #include <Magick++.h>
 #include <Magick++/STL.h>
 #include <fstream>
@@ -213,30 +214,41 @@ void KeepInBox(Shreds* parts)
     {
         for (int i = 0; i < N; ++i)
         {
-            if ((*parts)[i].r.x < 0)
+            bool moved = false;
+            do
             {
-                (*parts)[i].r.x *= -1;
-                if ((*parts)[i].v.x < 0)
-                    (*parts)[i].v.x *= -1;
-            }
-            if ((*parts)[i].r.y < 0)
-            {
-                (*parts)[i].r.y *= -1;
-                if ((*parts)[i].v.y < 0)
-                    (*parts)[i].v.y *= -1;
-            }
-            if ((*parts)[i].r.x > box.x)
-            {
-                (*parts)[i].r.x = 2*box.x - (*parts)[i].r.x;
-                if ((*parts)[i].v.x > 0)
-                    (*parts)[i].v.x *= -1;
-            }
-            if ((*parts)[i].r.y > box.y)
-            {
-                (*parts)[i].r.y = 2*box.y - (*parts)[i].r.y;
-                if ((*parts)[i].v.y > 0)
-                    (*parts)[i].v.y *= -1;
-            }
+                moved = false;
+                if ((*parts)[i].r.x < 0)
+                {
+                    (*parts)[i].r.x *= -1;
+                    if ((*parts)[i].v.x < 0)
+                        (*parts)[i].v.x *= -1;
+                    moved = true;
+                }
+                if ((*parts)[i].r.y < 0)
+                {
+                    (*parts)[i].r.y *= -1;
+                    if ((*parts)[i].v.y < 0)
+                        (*parts)[i].v.y *= -1;
+                    moved = true;
+                }
+                if ((*parts)[i].r.x > box.x)
+                {
+                    (*parts)[i].r.x = fmod((*parts)[i].r.x, 2*box.x);
+                    (*parts)[i].r.x = 2*box.x - (*parts)[i].r.x;
+                    if ((*parts)[i].v.x > 0)
+                        (*parts)[i].v.x *= -1;
+                    moved = true;
+                }
+                if ((*parts)[i].r.y > box.y)
+                {
+                    (*parts)[i].r.y = fmod((*parts)[i].r.y, 2*box.y);
+                    (*parts)[i].r.y = 2*box.y - (*parts)[i].r.y;
+                    if ((*parts)[i].v.y > 0)
+                        (*parts)[i].v.y *= -1;
+                    moved = true;
+                }
+            } while (moved);
         }
     }
 }
