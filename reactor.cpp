@@ -448,6 +448,18 @@ void dumpPoints(const Shreds& particles,
 {
     std::ofstream fr(rfname, mode);
     std::ofstream fv(vfname, mode);
+    
+    if (fr.bad() || fr.fail())
+    {
+        std::cerr <<"Error: can\'t open file " <<rfname <<std::endl;
+        return;
+    }
+    if (fv.bad() || fv.fail())
+    {
+        std::cerr <<"Error: can\'t open file " <<vfname <<std::endl;
+        return;
+    }
+    
     for (int i = 0; i < N; ++i)
     {
         fr <<particles[i].r.x <<"    "<<particles[i].r.y <<endl;
@@ -463,8 +475,16 @@ void dumpPoints(const Shreds& particles,
 void describe(int iter, const Scene& sc)
 {
     cout <<"k = " <<sc.K <<"  u = " <<sc.U <<" e = " <<sc.K + sc.U<<endl;
-    std::ofstream file("State/" + 
-                       std::to_string(iter) + "_" + double2string(sc.time) + ".txt");
+    std::string fname = "State/" + 
+        std::to_string(iter) + "_" + double2string(sc.time) + ".txt";
+    std::ofstream file(fname);
+    
+    if (file.bad() || file.fail())
+    {
+        std::cerr <<"Error: can\'t open file " <<fname
+                  <<" (is State dir existing?)." <<std::endl;
+        return;
+    }
     file <<"#moment="<<iter<<"	t=" <<sc.time <<"	k="
          <<sc.K <<"	u="<<sc.U <<"	e=" <<sc.K + sc.U<<endl;
     file <<"#n= " <<N<<endl;
@@ -580,15 +600,22 @@ int main(int argc,char **argv)
         sequence[i].U = E.x;
         sequence[i].K = E.y;
         cout <<"computed state # " <<i;
-        if (!stepautofit)
-            if ((i/NStep)*NStep - i == 0)
-                cout <<"(frame #"<< i/NStep <<")";
-        cout <<" time: " <<sequence[i].time <<endl;
-        if (dumpPointsOnEachFrame)
+        bool anotherFrame = false;
+        if (stepautofit)
         {
-            dumpPoints(sequence[i].particles, "r.txt", "v.txt",
-                       std::ios_base::app|std::ios_base::ate|std::ios_base::out);
+            anotherFrame = true;
         }
+        else
+            if ((i/NStep)*NStep - i == 0)
+            {
+                cout <<"(frame #"<< i/NStep <<")";
+                anotherFrame = true;
+            }
+        cout <<" time: " <<sequence[i].time <<endl;
+        if (anotherFrame && dumpPointsOnEachFrame)
+            dumpPoints(sequence[i].particles, "r.txt", "v.txt",
+                       std::ios_base::app|std::ios_base::ate|
+                       std::ios_base::out);
         if (sequence[i].time > T) break;
     }
 
